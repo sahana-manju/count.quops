@@ -5,6 +5,9 @@ import plotly.graph_objects as go
 from data_ingestion import load_transform_data
 import os
 from dotenv import load_dotenv
+import psycopg2
+from datetime import datetime
+import psycopg2.extras
 
 
 
@@ -64,7 +67,53 @@ def show_main_app():
     st.title("Count.QuOps")
 
     # === Tabs ===
-    tab1, tab2 = st.tabs(["📊 Visualization", "📋 Computer Overview"])
+    tab1, tab2, tab3= st.tabs(["Visualization", "Computer Overview", "Submit Datapoint"])
+
+    # Database insertion function
+    def insert_quantum_datapoint(
+        reference, date, computation, num_qubits, num_2q_gates, num_1q_gates, total_gates,
+        circuit_depth, circuit_depth_measure, institution, computer, error_mitigation
+    ):
+        try:
+            conn = psycopg2.connect(
+                host="localhost",
+                database=os.getenv("DB_NAME"),
+                user=os.getenv("DB_USER"),
+                password=os.getenv("DB_PASSWORD"),
+                port="5432"
+            )
+            cursor = conn.cursor()
+            
+            cursor.execute("""
+                INSERT INTO quant_data (
+                    reference, date, computation,
+                    num_qubits, num_2q_gates, num_1q_gates, total_gates,
+                    circuit_depth, circuit_depth_measure,
+                    institution, computer, error_mitigation
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                reference,
+                date,
+                psycopg2.extras.Json(computation),
+                num_qubits,
+                num_2q_gates,
+                num_1q_gates,
+                total_gates,
+                circuit_depth,
+                circuit_depth_measure,
+                institution,
+                computer,
+                psycopg2.extras.Json(error_mitigation)
+            ))
+            
+            conn.commit()
+            cursor.close()
+            conn.close()
+            return True
+        except Exception as e:
+            st.error(f"Database Error: {e}")
+            return False
 
     # === Tab 1: Visualization ===
     with tab1:
@@ -178,6 +227,52 @@ def show_main_app():
 
         # Download button
         st.download_button("Download CSV", df_comp.to_csv(index=False), "dataset.csv", "text/csv")
+
+    
+    with tab3:
+        st.header("Submit Quantum Datapoint")
+
+        with st.form("quantum_form"):
+            reference = st.text_input("Reference (URL or citation)")
+            date = st.date_input("Experiment Date", value=datetime.today())
+            
+            computation_raw = st.text_area("Computation (comma-separated list)", help="e.g. QFT, Measurement")
+            error_mitigation_raw = st.text_area("Error Mitigation (comma-separated list)", help="e.g. ZNE, Clifford Data Regression")
+            
+            num_qubits = st.number_input("Number of Qubits", min_value=0, step=1)
+
+            num_2q_gates_raw = st.text_input("Number of Two-Qubit Gates")
+            num_2q_gates = int(num_2q_gates_raw) if num_2q_gates_raw.strip().isdigit() else None
+
+            num_1q_gates_raw = st.text_input("Number of Single-Qubit Gates")
+            num_1q_gates = int(num_1q_gates_raw) if num_1q_gates_raw.strip().isdigit() else None
+
+            total_gates_raw = st.text_input("Total Number of Gates")
+            total_gates = int(total_gates_raw) if total_gates_raw.strip().isdigit() else None
+
+            circuit_depth_raw = st.text_input("Circuit Depth")
+            circuit_depth = int(circuit_depth_raw) if circuit_depth_raw.strip().isdigit() else None
+
+            circuit_depth_measure = st.text_input("Circuit Depth Measure")
+            
+            institution = st.text_input("Institution")
+            computer = st.text_input("Computer")
+            
+            submit = st.form_submit_button("Submit")
+
+            if submit:
+                if reference:
+                    computation_list = [x.strip() for x in computation_raw.split(",") if x.strip()]
+                    error_mitigation_list = [x.strip() for x in error_mitigation_raw.split(",") if x.strip()]
+                    success = insert_quantum_datapoint(
+                        reference, date, computation_list, num_qubits, num_2q_gates, num_1q_gates, total_gates,
+                        circuit_depth, circuit_depth_measure, institution, computer, error_mitigation_list
+                    )
+                    if success:
+                        st.success("Quantum datapoint submitted successfully!")
+                else:
+                    st.warning("Please fill out at least the reference field.")
+
 
 # Main logic
 if st.session_state.logged_in:
