@@ -2,13 +2,12 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from data_ingestion import load_transform_data
+from data_ingestion import load_transform_data,conn
 import os
 from dotenv import load_dotenv
 import psycopg2
 from datetime import datetime
 import psycopg2.extras
-
 
 
 load_dotenv()
@@ -21,6 +20,7 @@ CORRECT_PASSWORD = os.getenv('PASSWORD')
 # Initialize session state
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
+
 
 # Set page layout conditionally
 if st.session_state.logged_in:
@@ -55,13 +55,14 @@ def show_main_app():
             st.button("Confirm Logout")
             st.session_state.logged_in = False
 
-    @st.cache_data(show_spinner="Loading and transforming data...")
-    def load_data(sheet_id):
-        return load_transform_data(sheet_id)
+    # @st.cache_data(show_spinner="Loading and transforming data...")
+    # def load_data(data_source):
+    #     return load_transform_data(data_source)
 
-    sheet_id = os.getenv('SHEET_ID')
-    df = load_data(sheet_id)
-    st.session_state['df'] = df
+    data_source = os.getenv('DATA_SOURCE')
+    # df = load_data(data_source)
+ 
+    #st.session_state['df'] = df
 
     # === Page Title ===
     st.title("Count.QuOps")
@@ -75,13 +76,7 @@ def show_main_app():
         circuit_depth, circuit_depth_measure, institution, computer, error_mitigation
     ):
         try:
-            conn = psycopg2.connect(
-                host="localhost",
-                database=os.getenv("DB_NAME"),
-                user=os.getenv("DB_USER"),
-                password=os.getenv("DB_PASSWORD"),
-                port="5432"
-            )
+    
             cursor = conn.cursor()
             
             cursor.execute("""
@@ -118,6 +113,7 @@ def show_main_app():
     # === Tab 1: Visualization ===
     with tab1:
         st.header("Visual Analysis")
+        df = load_transform_data('db')
 
             # Create two columns
         col1, col2 = st.columns([1, 2])  # You can adjust the ratio as needed
@@ -171,18 +167,32 @@ def show_main_app():
                 df['bubble_size'] = df['bubble_size'] * 50 + 10  # range from 10 to 60
                 b_axis = 'bubble_size'
         
+        if data_source == 'sheet':
         # Filter DataFrame
-        filtered_df = df[
-            (df['Institution'].isin(selected_comps)) &
-            (df['Computer'].isin(selected_computers)) &
-            (df['Year'].isin(selected_years)) &
-            (
-                df['Error mitigation'].isin(selected_errors) |
-                df['Error mitigation_1'].isin(selected_errors) |
-                df['Error mitigation_2'].isin(selected_errors) |
-                df['Error mitigation_3'].isin(selected_errors)
-            )
-        ]
+            filtered_df = df[
+                (df['Institution'].isin(selected_comps)) &
+                (df['Computer'].isin(selected_computers)) &
+                (df['Year'].isin(selected_years)) &
+                (
+                    df['Error mitigation'].isin(selected_errors) |
+                    df['Error mitigation_1'].isin(selected_errors) |
+                    df['Error mitigation_2'].isin(selected_errors) |
+                    df['Error mitigation_3'].isin(selected_errors)
+                )
+            ]
+        else:
+             # Filter DataFrame
+            filtered_df = df[
+                (df['Institution'].isin(selected_comps)) &
+                (df['Computer'].isin(selected_computers)) &
+                (df['Year'].isin(selected_years)) &
+                (
+                      df['Error mitigation'].apply(
+                     lambda x: bool(set(x) & set(selected_errors)) if isinstance(x, list) else False
+                     )
+                
+                )
+            ]
 
         filtered_df = filtered_df.dropna(subset=[b_axis])
 
@@ -211,7 +221,7 @@ def show_main_app():
     # === Tab 2: Dataset Overview ===
     with tab2:
         st.header("Computer Overview")
-
+        sheet_id = os.getenv('SHEET_ID')
         url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=xlsx"
         df_comp = pd.read_excel(url,sheet_name= 1,header=1)
         df_comp.drop('Unnamed: 0',axis=1,inplace=True)
@@ -270,6 +280,8 @@ def show_main_app():
                     )
                     if success:
                         st.success("Quantum datapoint submitted successfully!")
+                        
+    
                 else:
                     st.warning("Please fill out at least the reference field.")
 
@@ -279,3 +291,5 @@ if st.session_state.logged_in:
     show_main_app()
 else:
     show_login_form()
+
+

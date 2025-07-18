@@ -3,7 +3,21 @@ import pandas as pd
 import numpy as np
 import logging
 from collections import defaultdict
+import os
+from dotenv import load_dotenv
+import psycopg2
+from psycopg2.extensions import connection as PGConnection
 
+load_dotenv()
+
+# Setting up Database connection
+conn = psycopg2.connect(
+    host="localhost",
+    database=os.getenv("DB_NAME"),
+    user=os.getenv("DB_USER"),
+    password=os.getenv("DB_PASSWORD"),
+    port="5432"
+)
 
 # Setting up logger object for console logging
 logger = logging.getLogger("data_ingestion")
@@ -18,7 +32,7 @@ console_handler.setFormatter(formatter)
 logger.addHandler(console_handler)
 
 # Function to load data from Excel sheet
-def load_data(sheet_id: str)->pd.DataFrame:
+def load_data_from_sheet(sheet_id: str)->pd.DataFrame:
     """
     Loading data from google sheet url
     """
@@ -155,17 +169,90 @@ def rename_missing_data(df: pd.DataFrame) -> pd.DataFrame:
     except Exception as e:
         logger.error("Error while renaming/cleaning columns: %s", e)
         raise
-        pass
-        
-def load_transform_data(sheet_id : str)->pd.DataFrame:
+
+def load_data_from_db(conn: PGConnection)->pd.DataFrame:
+    query = "SELECT * FROM quant_data;"
+    df = pd.read_sql_query(query, conn)
+    return df
+
+def clean_error_mitigation(x):
+    if isinstance(x, (list, tuple, np.ndarray)) and len(x) == 0:
+        return 'No Data'
+    if isinstance(x, str) and x.strip() in ('', '[]'):
+        return 'No Data'
+    return x
+
+def transform_db_data(df: pd.DataFrame)->pd.DataFrame:
+
+    # Feature Engineering
+    df['Computations'] = df['computation'].apply(
+    lambda x: ', '.join(x) if isinstance(x, list) else ''
+    )
+    df['Error mitigations'] = df['error_mitigation'].apply(
+    lambda x: ', '.join(x) if isinstance(x, list) else ''
+    )
+    df['Year'] = pd.to_datetime(df['date'], errors='coerce').dt.year
+
+    # Imputing missing values
+    df['institution'] = df['institution'].astype(str).str.strip()
+    df['institution'] = df['institution'].replace('', np.nan).fillna('Unnamed')
+
+    df['computer'] = df['computer'].astype(str).str.strip()
+    df['computer'] = df['computer'].replace('', np.nan).fillna('Unnamed')
+
+    df['institution'] = df['institution'].astype(str).str.strip()
+    df['institution'] = df['institution'].replace('', np.nan).fillna('Unnamed')
+
+    df['error_mitigation'] = df['error_mitigation'].apply(
+    lambda x: ['No Data'] if isinstance(x, list) and len(x) == 0 else x
+    )
+
+    # Handle error_mitigation: Replace NaN or empty lists with 'No Data'
+    df['Error mitigations'] = df['Error mitigations'].apply(clean_error_mitigation)
+
+    # Rename columns
+    df = df.rename(columns={
+    'reference': 'Reference',
+    'date': 'Date',
+    'computation': 'Computation',
+    'num_qubits': 'Number of qubits',
+    'num_2q_gates': 'Number of two-qubit gates',
+    'num_1q_gates': 'Number of single-qubit gates',
+    'total_gates':'Total number of gates',
+    'circuit_depth':'Circuit depth',
+    'circuit_depth_measure':'Circuit depth measure',
+    'institution':'Institution',
+    'computer':	'Computer',	
+    'error_mitigation':'Error mitigation',
+    })
+
+    return df
+
+def load_transform_data(data_source : str)->pd.DataFrame:
     """
     Main function to call the above functions in an order to clean the data
     """
-    df = load_data(sheet_id)
-    df, repeated_columns = handle_duplicate_columns(df)
-    df = add_custom_columns(df,repeated_columns)
-    df = rename_missing_data(df)
-    return df
+    if data_source == "sheet":
+        sheet_id = os.getenv('SHEET_ID')
+        df = load_data_from_sheet(sheet_id)
+        df, repeated_columns = handle_duplicate_columns(df)
+        df = add_custom_columns(df,repeated_columns)
+        df = rename_missing_data(df)
+        return df
+    else:
+        conn = psycopg2.connect(
+        host="localhost",
+        database=os.getenv("DB_NAME"),
+        user=os.getenv("DB_USER"),
+        password=os.getenv("DB_PASSWORD"),
+        port="5432"
+    )
+        df = load_data_from_db(conn)
+        df = transform_db_data(df)
+        df.to_csv('sample_db.csv')
+        return df
+
+#load_transform_data('db')
 
 
     
