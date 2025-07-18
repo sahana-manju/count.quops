@@ -19,14 +19,14 @@ CORRECT_PASSWORD = os.getenv('PASSWORD')
 
 # Initialize session state
 if "logged_in" not in st.session_state:
-    st.session_state.logged_in = False
+    st.session_state.logged_in = 'login'
 
 
 # Set page layout conditionally
-if st.session_state.logged_in:
-    st.set_page_config(layout="wide")
-else:
+if st.session_state.logged_in == 'login':
     st.set_page_config(layout="centered")
+else:
+    st.set_page_config(layout="wide")
 
 def show_login_form():
     with st.form(key='login_form'):
@@ -40,8 +40,9 @@ def show_login_form():
                 st.error("Please enter both username and password.")
             elif username == CORRECT_USERNAME and password == CORRECT_PASSWORD:
                 st.success("Login successful!")
-                st.session_state.logged_in = True
-                login_button = st.form_submit_button('Go to App')
+                st.session_state.logged_in = 'app'
+                #login_button = st.form_submit_button('Go to App')
+                st.experimental_rerun()
             else:
                 st.error("Invalid username or password")
 
@@ -242,6 +243,9 @@ def show_main_app():
     with tab3:
         st.header("Submit Quantum Datapoint")
 
+        
+
+
         with st.form("quantum_form"):
             reference = st.text_input("Reference (URL or citation)")
             date = st.date_input("Experiment Date", value=datetime.today())
@@ -270,6 +274,10 @@ def show_main_app():
             
             submit = st.form_submit_button("Submit")
 
+            if st.session_state.get("submission_success"):
+                st.success("Quantum datapoint submitted successfully!")
+                del st.session_state["submission_success"]  # clear the flag
+
             if submit:
                 if reference:
                     computation_list = [x.strip() for x in computation_raw.split(",") if x.strip()]
@@ -280,14 +288,20 @@ def show_main_app():
                     )
                     if success:
                         st.success("Quantum datapoint submitted successfully!")
+                        st.session_state.logged_in='refresh'
+                        st.session_state.submission_success=True
+                        st.experimental_rerun()
                         
     
                 else:
                     st.warning("Please fill out at least the reference field.")
+            
 
 
 # Main logic
-if st.session_state.logged_in:
+if st.session_state.logged_in == 'refresh':
+    show_main_app()
+elif st.session_state.logged_in == 'app':
     show_main_app()
 else:
     show_login_form()
