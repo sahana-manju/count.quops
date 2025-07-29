@@ -42,7 +42,10 @@ def show_login_form():
                 st.success("Login successful!")
                 st.session_state.logged_in = 'app'
                 #login_button = st.form_submit_button('Go to App')
-                st.experimental_rerun()
+                if os.getenv("ENVIRONMENT")=='dev':
+                    st.experimental_rerun()
+                else:
+                    st.rerun()
             else:
                 st.error("Invalid username or password")
 
@@ -290,7 +293,10 @@ def show_main_app():
                         st.success("Quantum datapoint submitted successfully!")
                         st.session_state.logged_in='refresh'
                         st.session_state.submission_success=True
-                        st.experimental_rerun()
+                        if os.getenv("ENVIRONMENT")=='dev':
+                            st.experimental_rerun()
+                        else:
+                            st.rerun()
                         
     
                 else:
