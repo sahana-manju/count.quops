@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from data_ingestion import load_transform_data,conn
+from data_ingestion import load_transform_data,load_comp_data_from_db
 import os
 from dotenv import load_dotenv
 import psycopg2
@@ -80,6 +80,13 @@ def show_main_app():
         circuit_depth, circuit_depth_measure, institution, computer, error_mitigation
     ):
         try:
+            conn = psycopg2.connect(
+                host="localhost",
+                database=os.getenv("DB_NAME"),
+                user=os.getenv("DB_USER"),
+                password=os.getenv("DB_PASSWORD"),
+                port="5432"
+            )
     
             cursor = conn.cursor()
             
@@ -107,12 +114,15 @@ def show_main_app():
             ))
             
             conn.commit()
-            cursor.close()
-            conn.close()
+            
             return True
         except Exception as e:
             st.error(f"Database Error: {e}")
             return False
+        finally:
+            cursor.close()
+            conn.close()
+
 
     # === Tab 1: Visualization ===
     with tab1:
@@ -225,10 +235,15 @@ def show_main_app():
     # === Tab 2: Dataset Overview ===
     with tab2:
         st.header("Computer Overview")
-        sheet_id = os.getenv('SHEET_ID')
-        url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=xlsx"
-        df_comp = pd.read_excel(url,sheet_name= 1,header=1)
-        df_comp.drop('Unnamed: 0',axis=1,inplace=True)
+        if os.getenv("DATA_SOURCE")=='sheet':     
+            sheet_id = os.getenv('SHEET_ID')
+            url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=xlsx"
+            df_comp = pd.read_excel(url,sheet_name= 1,header=1)
+            df_comp.drop('Unnamed: 0',axis=1,inplace=True)
+        else:  
+            df_comp = load_comp_data_from_db()
+
+        
         df_comp.fillna('',inplace=True)
 
         st.subheader("Quick Info")

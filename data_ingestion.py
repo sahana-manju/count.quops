@@ -172,7 +172,21 @@ def rename_missing_data(df: pd.DataFrame) -> pd.DataFrame:
 
 def load_data_from_db(conn: PGConnection)->pd.DataFrame:
     query = "SELECT * FROM quant_data;"
+    df_comp = pd.read_sql_query(query, conn)
+    return df_comp
+
+def load_comp_data_from_db()->pd.DataFrame:
+    conn = psycopg2.connect(
+                host="localhost",
+                database=os.getenv("DB_NAME"),
+                user=os.getenv("DB_USER"),
+                password=os.getenv("DB_PASSWORD"),
+                port="5432"
+            )
+    
+    query = "SELECT * FROM quantum_computers;"
     df = pd.read_sql_query(query, conn)
+    conn.close()
     return df
 
 def clean_error_mitigation(x):
@@ -247,9 +261,10 @@ def load_transform_data(data_source : str)->pd.DataFrame:
         password=os.getenv("DB_PASSWORD"),
         port="5432"
     )
+        
         df = load_data_from_db(conn)
         df = transform_db_data(df)
-        df.to_csv('sample_db.csv')
+        conn.close()
         return df
 
 #load_transform_data('db')
