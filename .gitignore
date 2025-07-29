@@ -153,6 +153,11 @@ venv.bak/
 .dmypy.json
 dmypy.json
 sample_db.csv
+
+nohup.out
+output.log
+*.log
+
 # Pyre type checker
 .pyre/
 
