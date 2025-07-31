@@ -60,7 +60,7 @@ def admin_interface():
 
     if st.sidebar.button("📊 Logout"):
         st.session_state.logged_in = "logout"
-        st.experimental_rerun()
+        st.rerun()
 
     # --- Main content based on sidebar tab selection ---
     if st.session_state.admin_page == "User Table":
@@ -89,7 +89,7 @@ def admin_interface():
                             cur.close()
                             conn.close()
                             st.success(f"{user['username']} approved.")
-                            st.experimental_rerun()
+                            st.rerun()
 
                 with col3:
                     if st.button(f"🗑️ Delete {user['username']}", key=f"delete_{user['username']}"):
@@ -100,7 +100,7 @@ def admin_interface():
                         cur.close()
                         conn.close()
                         st.warning(f"{user['username']} deleted.")
-                        st.experimental_rerun()
+                        st.rerun()
 
         except Exception as e:
             st.error(f"Error loading users: {e}")
@@ -430,10 +430,7 @@ def show_user_app():
                         st.success("Quantum datapoint submitted successfully!")
                         st.session_state.logged_in='refresh'
                         st.session_state.submission_success=True
-                        if os.getenv("ENVIRONMENT")=='dev':
-                            st.experimental_rerun()
-                        else:
-                            st.rerun()
+                        st.rerun()
                         
     
                 else:
@@ -530,10 +527,7 @@ def show_login_form():
                 st.markdown("Welcome to the admin dashboard.")
                 st.session_state.logged_in = 'admin'
                 #login_button = st.form_submit_button('Go to App')
-                if os.getenv("ENVIRONMENT")=='dev':
-                    st.experimental_rerun()
-                else:
-                    st.rerun()
+                st.rerun()
             # Add your admin dashboard code here
             else:
                 st.error("❌ Invalid credentials.")
@@ -549,10 +543,7 @@ def show_login_form():
                 st.markdown("Welcome to the quantum computing portal.")
                 st.session_state.logged_in = 'app'
                 #login_button = st.form_submit_button('Go to App')
-                if os.getenv("ENVIRONMENT")=='dev':
-                    st.experimental_rerun() 
-                else:
-                    st.rerun()
+                st.rerun()
                 # Add user-specific features here
             else:
                 st.error("❌ Invalid user credentials.")
