@@ -8,48 +8,175 @@ from dotenv import load_dotenv
 import psycopg2
 from datetime import datetime
 import psycopg2.extras
+from psycopg2.extras import RealDictCursor
 
-
+# Loading environment variables
 load_dotenv()
 
-
-CORRECT_USERNAME = os.getenv('USERNAME')
-CORRECT_PASSWORD = os.getenv('PASSWORD')
-
-
-# Initialize session state
+# Initialize session state for Login
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = 'login'
 
+# Setting the wide page format
+st.set_page_config(layout="wide")
 
-# Set page layout conditionally
-if st.session_state.logged_in == 'login':
-    st.set_page_config(layout="centered")
-else:
-    st.set_page_config(layout="wide")
+# --- PostgreSQL connection ---
+def get_connection():
+    return psycopg2.connect(
+        host="localhost",
+        database=os.getenv("DB_NAME"),
+        user=os.getenv("DB_USER"),
+        password=os.getenv("DB_PASSWORD"),
+        port="5432"
+    )
 
-def show_login_form():
-    with st.form(key='login_form'):
-        st.subheader('🔐 Login Credentials')
-        username = st.text_input('**Username:**')
-        password = st.text_input('**Password:**', type='password')
-        login_button = st.form_submit_button('Login')
+# Check credentials for admin and user
+def check_credentials(username, password,table):
+    try:
+        conn = get_connection()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        query = f"SELECT * FROM {table} WHERE username = %s AND password = %s"
+        cur.execute(query, (username, password))
+        user = cur.fetchone()
+        cur.close()
+        conn.close()
+        return user is not None
+    except Exception as e:
+        st.error(f"Database error: {e}")
+        return False
+    
+def admin_interface():
+    # --- Initialize page state ---
+    if "admin_page" not in st.session_state:
+        st.session_state.admin_page = "User Table"
 
-        if login_button:
-            if not username or not password:
-                st.error("Please enter both username and password.")
-            elif username == CORRECT_USERNAME and password == CORRECT_PASSWORD:
-                st.success("Login successful!")
-                st.session_state.logged_in = 'app'
-                #login_button = st.form_submit_button('Go to App')
-                if os.getenv("ENVIRONMENT")=='dev':
-                    st.experimental_rerun()
-                else:
-                    st.rerun()
+    # --- Sidebar vertical tabs ---
+    st.sidebar.title("🔧 Admin Panel")
+    if st.sidebar.button("👥 Manage Users"):
+        st.session_state.admin_page = "User Table"
+
+    if st.sidebar.button("📊 Manage Datapoints"):
+        st.session_state.admin_page = "Data Table"
+
+    if st.sidebar.button("📊 Logout"):
+        st.session_state.logged_in = "logout"
+        st.experimental_rerun()
+
+    # --- Main content based on sidebar tab selection ---
+    if st.session_state.admin_page == "User Table":
+        st.header("👥 Manage Users")
+
+        try:
+            conn = get_connection()
+            cur = conn.cursor(cursor_factory=RealDictCursor)
+            cur.execute("SELECT username, status FROM users ORDER BY username")
+            users = cur.fetchall()
+            cur.close()
+            conn.close()
+
+            for user in users:
+                col1, col2, col3 = st.columns([3, 2, 2])
+                with col1:
+                    st.write(f"👤 **{user['username']}** — `{user['status']}`")
+
+                with col2:
+                    if user["status"] != "APPROVED":
+                        if st.button(f"✅ Approve {user['username']}", key=f"approve_{user['username']}"):
+                            conn = get_connection()
+                            cur = conn.cursor()
+                            cur.execute("UPDATE users SET status = 'APPROVED' WHERE username = %s", (user['username'],))
+                            conn.commit()
+                            cur.close()
+                            conn.close()
+                            st.success(f"{user['username']} approved.")
+                            st.experimental_rerun()
+
+                with col3:
+                    if st.button(f"🗑️ Delete {user['username']}", key=f"delete_{user['username']}"):
+                        conn = get_connection()
+                        cur = conn.cursor()
+                        cur.execute("DELETE FROM users WHERE username = %s", (user['username'],))
+                        conn.commit()
+                        cur.close()
+                        conn.close()
+                        st.warning(f"{user['username']} deleted.")
+                        st.experimental_rerun()
+
+        except Exception as e:
+            st.error(f"Error loading users: {e}")
+
+    elif st.session_state.admin_page == "Data Table":
+        st.header("📈 Submissions Graph Data")
+        try:
+            conn = get_connection()
+            cur = conn.cursor(cursor_factory=RealDictCursor)
+            cur.execute("SELECT * FROM quant_data where status IN ('PENDING','UPDATE REQUESTED') ORDER BY id DESC")
+            data = cur.fetchall()
+            cur.close()
+            conn.close()
+            df_data = pd.DataFrame(data)
+            print(df_data.columns)
+
+            if not data:
+                st.info("✅ No pending submissions.")
             else:
-                st.error("Invalid username or password")
+                for row in data:
+                    with st.container():
+                        st.markdown("---")
+                        col1, col2 = st.columns([6, 4])
 
-def show_main_app():
+                        with col1:
+                            # st.markdown(f"**ID:** `{row['id']}`")
+                            # st.markdown(f"**Reference:** {row['reference']}")
+                            # st.markdown(f"**Date:** {row['date']}")
+                            # st.markdown(f"**Computation:** {row['computation']}")
+                            # st.markdown(f"**Qubits:** {row['num_qubits']}")
+                            # st.markdown(f"**2-Qubit Gates:** {row['num_2q_gates']}")
+                            # st.markdown(f"**1-Qubit Gates:** {row['num_1q_gates']}")
+                            # st.markdown(f"**Total Gates:** {row['total_gates']}")
+                            # st.markdown(f"**Circuit Depth:** {row['circuit_depth']}")
+                            # st.markdown(f"**Depth (Measured):** {row['circuit_depth_measure']}")
+                            # st.markdown(f"**Institution:** {row['institution']}")
+                            # st.markdown(f"**Computer:** {row['computer']}")
+                            # st.markdown(f"**Error Mitigation:** {row['error_mitigation']}")
+                            # st.markdown(f"**Status:** `{row['status']}`")
+                            st.table(row)
+
+                        with col2:
+                            c1, c2 = st.columns(2)
+                            if c1.button("✅ Approve", key=f"approve_{row['id']}"):
+                                conn = get_connection()
+                                cur = conn.cursor()
+
+                                if row['status']=='PENDING':
+                                    cur.execute("UPDATE quant_data SET status = 'APPROVED' WHERE id = %s", (row['id'],))
+                                else:
+                                    cur.execute("DELETE from quant_data WHERE reference= %s and status= 'APPROVED'", (row['reference'],))
+                                    conn.commit()
+                                    cur.execute("UPDATE quant_data SET status = 'APPROVED' WHERE id = %s", (row['id'],))
+
+                                conn.commit()
+                                cur.close()
+                                conn.close()
+                                st.success(f"Approved ID {row['id']}")
+                                st.rerun()
+
+                            if c2.button("❌ Reject", key=f"reject_{row['id']}"):
+                                conn = get_connection()
+                                cur = conn.cursor()
+                                cur.execute("DELETE from quant_data WHERE id = %s", (row['id'],))
+                                conn.commit()
+                                cur.close()
+                                conn.close()
+                                st.warning(f"Rejected ID {row['id']}")
+                                st.rerun()
+
+        except Exception as e:
+            st.error(f"Database error: {e}")
+
+
+
+def show_user_app():
     #st.set_page_config(layout="wide")
 
     # Sidebar logout button
@@ -72,7 +199,7 @@ def show_main_app():
     st.title("Count.QuOps")
 
     # === Tabs ===
-    tab1, tab2, tab3= st.tabs(["Visualization", "Computer Overview", "Submit Datapoint"])
+    tab1, tab2, tab3, tab4= st.tabs(["Visualization", "Computer Overview", "Submit New Datapoint", "Update a Datapoint"])
 
     # Database insertion function
     def insert_quantum_datapoint(
@@ -80,13 +207,7 @@ def show_main_app():
         circuit_depth, circuit_depth_measure, institution, computer, error_mitigation
     ):
         try:
-            conn = psycopg2.connect(
-                host="localhost",
-                database=os.getenv("DB_NAME"),
-                user=os.getenv("DB_USER"),
-                password=os.getenv("DB_PASSWORD"),
-                port="5432"
-            )
+            conn = get_connection()
     
             cursor = conn.cursor()
             
@@ -164,6 +285,7 @@ def show_main_app():
 
             # B-axis selection
             b_options = [
+                'Number of qubits',
                 'Number of two-qubit gates',
                 'Number of single-qubit gates',
                 'Total number of gates',
@@ -316,14 +438,132 @@ def show_main_app():
     
                 else:
                     st.warning("Please fill out at least the reference field.")
+
+    with tab4:
+        # --- Step 2: Select a row to edit ---
+        selected_ref = st.selectbox("🔍 Select a Reference to Update", df['Reference'])
+
+        # --- Step 3: Show update form ---
+        if selected_ref:
+            record = df[df['Reference'] == selected_ref].iloc[0]
+            st.subheader(f"✏️ Update Entry for: {record['Reference']}")
+
+            new_date = st.date_input("Date", value=record['Date'])
+            new_qubits = st.number_input("Number of Qubits", value=int(record['Number of qubits']))
+
+            new_num_2q_gates = st.number_input("Number of two Qubits", value=record['Number of two-qubit gates'])
+            new_num_2q_gates = int(num_2q_gates_raw) if num_2q_gates_raw.strip().isdigit() else None
+
+            new_num_1q_gates = st.number_input("Number of single Qubits", value=record['Number of single-qubit gates'])
+            new_num_1q_gates = int(num_1q_gates_raw) if num_1q_gates_raw.strip().isdigit() else None
+
+            new_total_gates= st.number_input("Total number of gates", value=record['Total number of gates'])
+            new_total_gates = int(total_gates_raw) if total_gates_raw.strip().isdigit() else None
+
+            new_circuit_depth = st.number_input("Circuit depth", value=record['Circuit depth'])
+            new_circuit_depth = int(circuit_depth_raw) if circuit_depth_raw.strip().isdigit() else None
+
+            new_circuit_depth_measure = st.text_input("", value=record['Circuit depth measure'])
+            new_institution = st.text_input("Institution", value=record['Institution'])
+            new_computation = st.text_input("Computation", value=record['Computations'])
+            new_computer = st.text_input("Computer", value=record['Computer'])
+            new_mitigation = st.text_input("Error Mitigations", value=record['Error mitigations'])
+
+            computation_list = [x.strip() for x in new_computation.split(",") if x.strip()]
+            error_mitigation_list = [x.strip() for x in new_mitigation.split(",") if x.strip()]
+
             
 
+            if st.button("💾 Save Changes"):
+                # Here you'd update the database (e.g., using SQL UPDATE)
+                conn = get_connection()
+    
+                cursor = conn.cursor()
+
+                status = "UPDATE REQUESTED"
+                
+                cursor.execute("""
+                    INSERT INTO quant_data (
+                        reference, date, computation,
+                        num_qubits, num_2q_gates, num_1q_gates, total_gates,
+                        circuit_depth, circuit_depth_measure,
+                        institution, computer, error_mitigation,status
+                    )
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """, (
+                    selected_ref,
+                    new_date,
+                    psycopg2.extras.Json(computation_list),
+                    new_qubits,
+                    new_num_2q_gates,
+                    new_num_1q_gates,
+                    new_total_gates,
+                    new_circuit_depth,
+                    new_circuit_depth_measure,
+                    new_institution,
+                    new_computer,
+                    psycopg2.extras.Json(error_mitigation_list),
+                    status
+                ))
+                
+                conn.commit()
+                cursor.close()
+                conn.close()
+                st.success(f"Update request submitted: {record['Reference']}")
+            
+def show_login_form():
+        # --- Page Setup ---
+    st.title("🔬 Count.QuOPS Portal")
+    st.markdown("Welcome! Please log in as an **Admin** or a **User** to continue.")
+
+    # --- Tabs for Login Options ---
+    tab1, tab2 = st.tabs(["Admin Login", "User Login"])
+
+    with tab1:
+        st.subheader("Admin Login")
+        
+        admin_user = st.text_input("Username", key="admin_user")
+        admin_pass = st.text_input("Password", type="password", key="admin_pass")
+        if st.button("Login as Admin"):
+            if check_credentials(admin_user, admin_pass,'admin_users'):
+                st.success("✅ Admin login successful!")
+                st.markdown("Welcome to the admin dashboard.")
+                st.session_state.logged_in = 'admin'
+                #login_button = st.form_submit_button('Go to App')
+                if os.getenv("ENVIRONMENT")=='dev':
+                    st.experimental_rerun()
+                else:
+                    st.rerun()
+            # Add your admin dashboard code here
+            else:
+                st.error("❌ Invalid credentials.")
+
+
+    with tab2:
+        st.subheader("User Login")
+        user_user = st.text_input("Username", key="user_user")
+        user_pass = st.text_input("Password", type="password", key="user_pass")
+        if st.button("Login as User"):
+            if check_credentials(user_user,user_pass,'users'):
+                st.success("✅ User login successful!")
+                st.markdown("Welcome to the quantum computing portal.")
+                st.session_state.logged_in = 'app'
+                #login_button = st.form_submit_button('Go to App')
+                if os.getenv("ENVIRONMENT")=='dev':
+                    st.experimental_rerun() 
+                else:
+                    st.rerun()
+                # Add user-specific features here
+            else:
+                st.error("❌ Invalid user credentials.")
 
 # Main logic
 if st.session_state.logged_in == 'refresh':
-    show_main_app()
+    show_user_app()
 elif st.session_state.logged_in == 'app':
-    show_main_app()
+    show_user_app()
+elif st.session_state.logged_in == 'admin':
+    admin_interface()
 else:
     show_login_form()
 

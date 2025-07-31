@@ -171,7 +171,7 @@ def rename_missing_data(df: pd.DataFrame) -> pd.DataFrame:
         raise
 
 def load_data_from_db(conn: PGConnection)->pd.DataFrame:
-    query = "SELECT * FROM quant_data;"
+    query = "SELECT * FROM quant_data where status = 'APPROVED';"
     df_comp = pd.read_sql_query(query, conn)
     return df_comp
 
