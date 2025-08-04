@@ -5,4 +5,5 @@ python-dotenv
 streamlit
 plotly
 psycopg2-binary
+streamlit_plotly_events
 

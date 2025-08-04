@@ -10,6 +10,7 @@ from datetime import datetime
 import psycopg2.extras
 from psycopg2.extras import RealDictCursor
 
+
 # Loading environment variables
 load_dotenv()
 
@@ -123,7 +124,7 @@ def admin_interface():
                 for row in data:
                     with st.container():
                         st.markdown("---")
-                        col1, col2 = st.columns([6, 4])
+                        col1, col2 = st.columns([8, 2])
 
                         with col1:
                             # st.markdown(f"**ID:** `{row['id']}`")
@@ -140,7 +141,14 @@ def admin_interface():
                             # st.markdown(f"**Computer:** {row['computer']}")
                             # st.markdown(f"**Error Mitigation:** {row['error_mitigation']}")
                             # st.markdown(f"**Status:** `{row['status']}`")
-                            st.table(row)
+                            if row["status"]=="PENDING":
+                                st.markdown("New Datapoint")
+                                st.table(row)
+                            else:
+                                st.markdown("Update Datapoint")
+                                st.markdown(f"**Comments:** <span style='color:green'>{row['feedback']}</span>", unsafe_allow_html=True)
+                                st.table(row)
+                            
 
                         with col2:
                             c1, c2 = st.columns(2)
@@ -330,6 +338,7 @@ def show_user_app():
                 )
             ]
 
+
         filtered_df = filtered_df.dropna(subset=[b_axis])
 
         
@@ -352,6 +361,7 @@ def show_user_app():
             )
         
             st.plotly_chart(fig, use_container_width=True)
+
 
 
     # === Tab 2: Dataset Overview ===
@@ -469,6 +479,8 @@ def show_user_app():
             computation_list = [x.strip() for x in new_computation.split(",") if x.strip()]
             error_mitigation_list = [x.strip() for x in new_mitigation.split(",") if x.strip()]
 
+            new_feedback = st.text_input("Comments", value=record['feedback'])
+
             
 
             if st.button("💾 Save Changes"):
@@ -484,9 +496,9 @@ def show_user_app():
                         reference, date, computation,
                         num_qubits, num_2q_gates, num_1q_gates, total_gates,
                         circuit_depth, circuit_depth_measure,
-                        institution, computer, error_mitigation,status
+                        institution, computer, error_mitigation,status,feedback
                     )
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """, (
                     selected_ref,
                     new_date,
@@ -500,7 +512,8 @@ def show_user_app():
                     new_institution,
                     new_computer,
                     psycopg2.extras.Json(error_mitigation_list),
-                    status
+                    status,
+                    new_feedback
                 ))
                 
                 conn.commit()
