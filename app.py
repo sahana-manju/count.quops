@@ -458,17 +458,17 @@ def show_user_app():
             new_date = st.date_input("Date", value=record['Date'])
             new_qubits = st.number_input("Number of Qubits", value=int(record['Number of qubits']))
 
-            new_num_2q_gates = st.number_input("Number of two Qubits", value=record['Number of two-qubit gates'])
-            new_num_2q_gates = int(num_2q_gates_raw) if num_2q_gates_raw.strip().isdigit() else None
+            num_2q_gates_raw = st.text_input("Number of two Qubits", value=record['Number of two-qubit gates'])
+            new_num_2q_gates = int(num_2q_gates_raw) if num_2q_gates_raw is not None and num_2q_gates_raw.strip().isdigit() else None
 
-            new_num_1q_gates = st.number_input("Number of single Qubits", value=record['Number of single-qubit gates'])
-            new_num_1q_gates = int(num_1q_gates_raw) if num_1q_gates_raw.strip().isdigit() else None
+            num_1q_gates_raw = st.text_input("Number of single Qubits", value=record['Number of single-qubit gates'])
+            new_num_1q_gates = int(num_1q_gates_raw) if num_1q_gates_raw is not None and num_1q_gates_raw.strip().isdigit() else None
 
-            new_total_gates= st.number_input("Total number of gates", value=record['Total number of gates'])
-            new_total_gates = int(total_gates_raw) if total_gates_raw.strip().isdigit() else None
+            total_gates_raw = st.text_input("Total number of gates", value=record['Total number of gates'])
+            new_total_gates = int(total_gates_raw) if total_gates_raw is not None and total_gates_raw.strip().isdigit() else None
 
-            new_circuit_depth = st.number_input("Circuit depth", value=record['Circuit depth'])
-            new_circuit_depth = int(circuit_depth_raw) if circuit_depth_raw.strip().isdigit() else None
+            circuit_depth_raw = st.text_input("Circuit depth", value=record['Circuit depth'])
+            new_circuit_depth = int(circuit_depth_raw) if circuit_depth_raw is not None and circuit_depth_raw.strip().isdigit() else None
 
             new_circuit_depth_measure = st.text_input("", value=record['Circuit depth measure'])
             new_institution = st.text_input("Institution", value=record['Institution'])
