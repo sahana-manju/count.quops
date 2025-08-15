@@ -9,7 +9,9 @@ import psycopg2
 from datetime import datetime
 import psycopg2.extras
 from psycopg2.extras import RealDictCursor
-
+from captcha.image import ImageCaptcha
+import random, string
+import time
 
 # Loading environment variables
 load_dotenv()
@@ -49,12 +51,12 @@ def check_credentials(username, password,table):
 def admin_interface():
     # --- Initialize page state ---
     if "admin_page" not in st.session_state:
-        st.session_state.admin_page = "User Table"
+        st.session_state.admin_page = "Data Table"
 
     # --- Sidebar vertical tabs ---
     st.sidebar.title("🔧 Admin Panel")
-    if st.sidebar.button("👥 Manage Users"):
-        st.session_state.admin_page = "User Table"
+    # if st.sidebar.button("👥 Manage Users"):
+    #     st.session_state.admin_page = "User Table"
 
     if st.sidebar.button("📊 Manage Datapoints"):
         st.session_state.admin_page = "Data Table"
@@ -64,49 +66,49 @@ def admin_interface():
         st.rerun()
 
     # --- Main content based on sidebar tab selection ---
-    if st.session_state.admin_page == "User Table":
-        st.header("👥 Manage Users")
+    # if st.session_state.admin_page == "User Table":
+    #     st.header("👥 Manage Users")
 
-        try:
-            conn = get_connection()
-            cur = conn.cursor(cursor_factory=RealDictCursor)
-            cur.execute("SELECT username, status FROM users ORDER BY username")
-            users = cur.fetchall()
-            cur.close()
-            conn.close()
+    #     try:
+    #         conn = get_connection()
+    #         cur = conn.cursor(cursor_factory=RealDictCursor)
+    #         cur.execute("SELECT username, status FROM users ORDER BY username")
+    #         users = cur.fetchall()
+    #         cur.close()
+    #         conn.close()
 
-            for user in users:
-                col1, col2, col3 = st.columns([3, 2, 2])
-                with col1:
-                    st.write(f"👤 **{user['username']}** — `{user['status']}`")
+    #         for user in users:
+    #             col1, col2, col3 = st.columns([3, 2, 2])
+    #             with col1:
+    #                 st.write(f"👤 **{user['username']}** — `{user['status']}`")
 
-                with col2:
-                    if user["status"] != "APPROVED":
-                        if st.button(f"✅ Approve {user['username']}", key=f"approve_{user['username']}"):
-                            conn = get_connection()
-                            cur = conn.cursor()
-                            cur.execute("UPDATE users SET status = 'APPROVED' WHERE username = %s", (user['username'],))
-                            conn.commit()
-                            cur.close()
-                            conn.close()
-                            st.success(f"{user['username']} approved.")
-                            st.rerun()
+    #             with col2:
+    #                 if user["status"] != "APPROVED":
+    #                     if st.button(f"✅ Approve {user['username']}", key=f"approve_{user['username']}"):
+    #                         conn = get_connection()
+    #                         cur = conn.cursor()
+    #                         cur.execute("UPDATE users SET status = 'APPROVED' WHERE username = %s", (user['username'],))
+    #                         conn.commit()
+    #                         cur.close()
+    #                         conn.close()
+    #                         st.success(f"{user['username']} approved.")
+    #                         st.rerun()
 
-                with col3:
-                    if st.button(f"🗑️ Delete {user['username']}", key=f"delete_{user['username']}"):
-                        conn = get_connection()
-                        cur = conn.cursor()
-                        cur.execute("DELETE FROM users WHERE username = %s", (user['username'],))
-                        conn.commit()
-                        cur.close()
-                        conn.close()
-                        st.warning(f"{user['username']} deleted.")
-                        st.rerun()
+    #             with col3:
+    #                 if st.button(f"🗑️ Delete {user['username']}", key=f"delete_{user['username']}"):
+    #                     conn = get_connection()
+    #                     cur = conn.cursor()
+    #                     cur.execute("DELETE FROM users WHERE username = %s", (user['username'],))
+    #                     conn.commit()
+    #                     cur.close()
+    #                     conn.close()
+    #                     st.warning(f"{user['username']} deleted.")
+    #                     st.rerun()
 
-        except Exception as e:
-            st.error(f"Error loading users: {e}")
+    #     except Exception as e:
+    #         st.error(f"Error loading users: {e}")
 
-    elif st.session_state.admin_page == "Data Table":
+    if st.session_state.admin_page == "Data Table":
         st.header("📈 Submissions Graph Data")
         try:
             conn = get_connection()
@@ -208,6 +210,13 @@ def show_user_app():
 
     # === Tabs ===
     tab1, tab2, tab3, tab4= st.tabs(["Visualization", "Computer Overview", "Submit New Datapoint", "Update a Datapoint"])
+
+    # define the costant
+    length_captcha = 4
+    width = 200
+    height = 150
+
+
 
     # Database insertion function
     def insert_quantum_datapoint(
@@ -394,63 +403,94 @@ def show_user_app():
         st.header("Submit Quantum Datapoint")
 
         
+        # CAPTCHA Verification First
+        if 'controllo' not in st.session_state:
+            st.session_state['controllo'] = False
+      
+        if st.session_state['controllo'] == False:
+            st.markdown("Please validate you are not a robot before submitting")
 
+            col1, col2 = st.columns([1, 1])
 
-        with st.form("quantum_form"):
-            reference = st.text_input("Reference (URL or citation)")
-            date = st.date_input("Experiment Date", value=datetime.today())
-            
-            computation_raw = st.text_area("Computation (comma-separated list)", help="e.g. QFT, Measurement")
-            error_mitigation_raw = st.text_area("Error Mitigation (comma-separated list)", help="e.g. ZNE, Clifford Data Regression")
-            
-            num_qubits = st.number_input("Number of Qubits", min_value=0, step=1)
+            if 'Captcha' not in st.session_state:
+                st.session_state['Captcha'] = ''.join(random.choices(string.ascii_uppercase + string.digits, k=length_captcha))
 
-            num_2q_gates_raw = st.text_input("Number of Two-Qubit Gates")
-            num_2q_gates = int(num_2q_gates_raw) if num_2q_gates_raw.strip().isdigit() else None
+            image = ImageCaptcha(width=width, height=height)
+            data = image.generate(st.session_state['Captcha'])
+            col1.image(data)
 
-            num_1q_gates_raw = st.text_input("Number of Single-Qubit Gates")
-            num_1q_gates = int(num_1q_gates_raw) if num_1q_gates_raw.strip().isdigit() else None
+            captcha_input = col2.text_area('Enter captcha text', height=30)
 
-            total_gates_raw = st.text_input("Total Number of Gates")
-            total_gates = int(total_gates_raw) if total_gates_raw.strip().isdigit() else None
-
-            circuit_depth_raw = st.text_input("Circuit Depth")
-            circuit_depth = int(circuit_depth_raw) if circuit_depth_raw.strip().isdigit() else None
-
-            circuit_depth_measure = st.text_input("Circuit Depth Measure")
-            
-            institution = st.text_input("Institution")
-            computer = st.text_input("Computer")
-            
-            submit = st.form_submit_button("Submit")
-
-            if st.session_state.get("submission_success"):
-                st.success("Quantum datapoint submitted successfully!")
-                del st.session_state["submission_success"]  # clear the flag
-
-            if submit:
-                if reference:
-                    computation_list = [x.strip() for x in computation_raw.split(",") if x.strip()]
-                    error_mitigation_list = [x.strip() for x in error_mitigation_raw.split(",") if x.strip()]
-                    success = insert_quantum_datapoint(
-                        reference, date, computation_list, num_qubits, num_2q_gates, num_1q_gates, total_gates,
-                        circuit_depth, circuit_depth_measure, institution, computer, error_mitigation_list
-                    )
-                    if success:
-                        st.success("Quantum datapoint submitted successfully!")
-                        st.session_state.logged_in='refresh'
-                        st.session_state.submission_success=True
-                        st.rerun()
-                        
-    
+            if st.button("Verify the code"):
+                if st.session_state['Captcha'].lower() == captcha_input.strip().lower():
+                    del st.session_state['Captcha']
+                    st.session_state['controllo'] = True
+                    #st.rerun()
                 else:
-                    st.warning("Please fill out at least the reference field.")
+                    st.error("🚨 Invalid Captcha")
+                    del st.session_state['Captcha']
+                    st.rerun()
+
+            #st.stop()  # Stop here until CAPTCHA is verified
+
+        # Only show the form if CAPTCHA passed
+        if st.session_state['controllo'] == True:
+            with st.form("quantum_form") :
+                reference = st.text_input("Reference (URL or citation)")
+                date = st.date_input("Experiment Date", value=datetime.today())
+
+                computation_raw = st.text_area("Computation (comma-separated list)", help="e.g. QFT, Measurement")
+                error_mitigation_raw = st.text_area("Error Mitigation (comma-separated list)", help="e.g. ZNE, Clifford Data Regression")
+
+                num_qubits = st.number_input("Number of Qubits", min_value=0, step=1)
+
+                num_2q_gates_raw = st.text_input("Number of Two-Qubit Gates")
+                num_2q_gates = int(num_2q_gates_raw) if num_2q_gates_raw.strip().isdigit() else None
+
+                num_1q_gates_raw = st.text_input("Number of Single-Qubit Gates")
+                num_1q_gates = int(num_1q_gates_raw) if num_1q_gates_raw.strip().isdigit() else None
+
+                total_gates_raw = st.text_input("Total Number of Gates")
+                total_gates = int(total_gates_raw) if total_gates_raw.strip().isdigit() else None
+
+                circuit_depth_raw = st.text_input("Circuit Depth")
+                circuit_depth = int(circuit_depth_raw) if circuit_depth_raw.strip().isdigit() else None
+
+                circuit_depth_measure = st.text_input("Circuit Depth Measure")
+
+                institution = st.text_input("Institution")
+                computer = st.text_input("Computer")
+
+                submit = st.form_submit_button("Submit")
+          
+                if st.session_state.get("submission_success"):
+                    st.success("Quantum datapoint submitted successfully!")
+                    del st.session_state["submission_success"]
+                
+                if submit:
+                    st.write("Form submitted!")
+                    st.write("Reference value:", reference)
+                    if reference:
+                        computation_list = [x.strip() for x in computation_raw.split(",") if x.strip()]
+                        error_mitigation_list = [x.strip() for x in error_mitigation_raw.split(",") if x.strip()]
+                        success = insert_quantum_datapoint(
+                            reference, date, computation_list, num_qubits, num_2q_gates, num_1q_gates, total_gates,
+                            circuit_depth, circuit_depth_measure, institution, computer, error_mitigation_list
+                        )
+                        print("success")
+                        if success:
+                            st.success("Quantum datapoint submitted successfully!")
+                            #st.session_state['controllo'] = False
+                            st.session_state.logged_in = 'refresh'
+                            st.session_state.submission_success = True
+                            st.rerun()
+                    else:
+                        st.warning("Please fill out at least the reference field.")
+
 
     with tab4:
-        # --- Step 2: Select a row to edit ---
         selected_ref = st.selectbox("🔍 Select a Reference to Update", df['Reference'])
 
-        # --- Step 3: Show update form ---
         if selected_ref:
             record = df[df['Reference'] == selected_ref].iloc[0]
             st.subheader(f"✏️ Update Entry for: {record['Reference']}")
@@ -459,67 +499,83 @@ def show_user_app():
             new_qubits = st.number_input("Number of Qubits", value=int(record['Number of qubits']))
 
             num_2q_gates_raw = st.text_input("Number of two Qubits", value=record['Number of two-qubit gates'])
-            new_num_2q_gates = int(num_2q_gates_raw) if num_2q_gates_raw is not None and num_2q_gates_raw.strip().isdigit() else None
+            new_num_2q_gates = int(num_2q_gates_raw) if num_2q_gates_raw and num_2q_gates_raw.strip().isdigit() else None
 
             num_1q_gates_raw = st.text_input("Number of single Qubits", value=record['Number of single-qubit gates'])
-            new_num_1q_gates = int(num_1q_gates_raw) if num_1q_gates_raw is not None and num_1q_gates_raw.strip().isdigit() else None
+            new_num_1q_gates = int(num_1q_gates_raw) if num_1q_gates_raw and num_1q_gates_raw.strip().isdigit() else None
 
             total_gates_raw = st.text_input("Total number of gates", value=record['Total number of gates'])
-            new_total_gates = int(total_gates_raw) if total_gates_raw is not None and total_gates_raw.strip().isdigit() else None
+            new_total_gates = int(total_gates_raw) if total_gates_raw and total_gates_raw.strip().isdigit() else None
 
             circuit_depth_raw = st.text_input("Circuit depth", value=record['Circuit depth'])
-            new_circuit_depth = int(circuit_depth_raw) if circuit_depth_raw is not None and circuit_depth_raw.strip().isdigit() else None
+            new_circuit_depth = int(circuit_depth_raw) if circuit_depth_raw and circuit_depth_raw.strip().isdigit() else None
 
             new_circuit_depth_measure = st.text_input("", value=record['Circuit depth measure'])
             new_institution = st.text_input("Institution", value=record['Institution'])
             new_computation = st.text_input("Computation", value=record['Computations'])
             new_computer = st.text_input("Computer", value=record['Computer'])
             new_mitigation = st.text_input("Error Mitigations", value=record['Error mitigations'])
+            new_feedback = st.text_input("Comments", value=record['feedback'])
 
             computation_list = [x.strip() for x in new_computation.split(",") if x.strip()]
             error_mitigation_list = [x.strip() for x in new_mitigation.split(",") if x.strip()]
 
-            new_feedback = st.text_input("Comments", value=record['feedback'])
+            # --- CAPTCHA ---
+            col3, col4 = st.columns(2)
+
+            if "update_captcha" not in st.session_state:
+                st.session_state.update_captcha = ''.join(random.choices(string.ascii_uppercase + string.digits, k=length_captcha))
+
+            image1 = ImageCaptcha(width=width, height=height)
+            data1 = image1.generate(st.session_state.update_captcha)
+            col3.image(data1)
+
+            captcha_input1 = col4.text_area('Enter the captcha text', height=30)
+
+            if st.button("Verify I am not a robot and Submit"):
+                if st.session_state.update_captcha.lower() == captcha_input1.strip().lower():
+                    conn = get_connection()
+                    cursor = conn.cursor()
+                    status = "UPDATE REQUESTED"
+
+                    cursor.execute("""
+                        INSERT INTO quant_data (
+                            reference, date, computation,
+                            num_qubits, num_2q_gates, num_1q_gates, total_gates,
+                            circuit_depth, circuit_depth_measure,
+                            institution, computer, error_mitigation, status, feedback
+                        )
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """, (
+                        selected_ref,
+                        new_date,
+                        psycopg2.extras.Json(computation_list),
+                        new_qubits,
+                        new_num_2q_gates,
+                        new_num_1q_gates,
+                        new_total_gates,
+                        new_circuit_depth,
+                        new_circuit_depth_measure,
+                        new_institution,
+                        new_computer,
+                        psycopg2.extras.Json(error_mitigation_list),
+                        status,
+                        new_feedback
+                    ))
+
+                    conn.commit()
+                    cursor.close()
+                    conn.close()
+
+                    st.success(f"Update request submitted: {record['Reference']}")
+                    del st.session_state.update_captcha  # Reset captcha after success
+                else:
+                    st.error("🚨 Invalid Captcha")
+                    del st.session_state.update_captcha
+                    st.rerun()
+
 
             
-
-            if st.button("💾 Save Changes"):
-                # Here you'd update the database (e.g., using SQL UPDATE)
-                conn = get_connection()
-    
-                cursor = conn.cursor()
-
-                status = "UPDATE REQUESTED"
-                
-                cursor.execute("""
-                    INSERT INTO quant_data (
-                        reference, date, computation,
-                        num_qubits, num_2q_gates, num_1q_gates, total_gates,
-                        circuit_depth, circuit_depth_measure,
-                        institution, computer, error_mitigation,status,feedback
-                    )
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                """, (
-                    selected_ref,
-                    new_date,
-                    psycopg2.extras.Json(computation_list),
-                    new_qubits,
-                    new_num_2q_gates,
-                    new_num_1q_gates,
-                    new_total_gates,
-                    new_circuit_depth,
-                    new_circuit_depth_measure,
-                    new_institution,
-                    new_computer,
-                    psycopg2.extras.Json(error_mitigation_list),
-                    status,
-                    new_feedback
-                ))
-                
-                conn.commit()
-                cursor.close()
-                conn.close()
-                st.success(f"Update request submitted: {record['Reference']}")
             
 def show_login_form():
         # --- Page Setup ---
