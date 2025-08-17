@@ -118,12 +118,11 @@ def admin_interface():
             cur.close()
             conn.close()
             df_data = pd.DataFrame(data)
-            print(df_data.columns)
 
             if not data:
                 st.info("✅ No pending submissions.")
             else:
-                for row in data:
+                for index,row in df_data.iterrows():
                     with st.container():
                         st.markdown("---")
                         col1, col2 = st.columns([8, 2])
@@ -206,7 +205,7 @@ def show_user_app():
     #st.session_state['df'] = df
 
     # === Page Title ===
-    st.title("Count.QuOps")
+    st.title("Quantum Operation Counts")
 
     # === Tabs ===
     tab1, tab2, tab3, tab4= st.tabs(["Visualization", "Computer Overview", "Submit New Datapoint", "Update a Datapoint"])
@@ -442,15 +441,15 @@ def show_user_app():
                 computation_raw = st.text_area("Computation (comma-separated list)", help="e.g. QFT, Measurement")
                 error_mitigation_raw = st.text_area("Error Mitigation (comma-separated list)", help="e.g. ZNE, Clifford Data Regression")
 
-                num_qubits = st.number_input("Number of Qubits", min_value=0, step=1)
+                num_qubits = st.number_input("Number of Qubits", min_value=0, step=1, help = "Number of qubits used in the quantum computation")
 
-                num_2q_gates_raw = st.text_input("Number of Two-Qubit Gates")
+                num_2q_gates_raw = st.text_input("Number of Two-Qubit Operations", help = "Number of two-qubit operations used in the quantum computation")
                 num_2q_gates = int(num_2q_gates_raw) if num_2q_gates_raw.strip().isdigit() else None
 
-                num_1q_gates_raw = st.text_input("Number of Single-Qubit Gates")
+                num_1q_gates_raw = st.text_input("Number of Single-Qubit Operations", help = "Number of siingle-qubit operations used in the quantum computation")
                 num_1q_gates = int(num_1q_gates_raw) if num_1q_gates_raw.strip().isdigit() else None
 
-                total_gates_raw = st.text_input("Total Number of Gates")
+                total_gates_raw = st.text_input("Total Number of Operations",help = "Total number of operations used in the quantum computation, e.g. single-qubit operations + two-qubit operations")
                 total_gates = int(total_gates_raw) if total_gates_raw.strip().isdigit() else None
 
                 circuit_depth_raw = st.text_input("Circuit Depth")
@@ -481,7 +480,7 @@ def show_user_app():
                         if success:
                             st.success("Quantum datapoint submitted successfully!")
                             #st.session_state['controllo'] = False
-                            st.session_state.logged_in = 'refresh'
+                            #st.session_state.logged_in = 'refresh'
                             st.session_state.submission_success = True
                             st.rerun()
                     else:
@@ -498,19 +497,19 @@ def show_user_app():
             new_date = st.date_input("Date", value=record['Date'])
             new_qubits = st.number_input("Number of Qubits", value=int(record['Number of qubits']))
 
-            num_2q_gates_raw = st.text_input("Number of two Qubits", value=record['Number of two-qubit gates'])
+            num_2q_gates_raw = st.text_input("Number of Two-Qubit Operations", value=record['Number of two-qubit gates'])
             new_num_2q_gates = int(num_2q_gates_raw) if num_2q_gates_raw and num_2q_gates_raw.strip().isdigit() else None
 
-            num_1q_gates_raw = st.text_input("Number of single Qubits", value=record['Number of single-qubit gates'])
+            num_1q_gates_raw = st.text_input("Number of Single-Qubit Operations", value=record['Number of single-qubit gates'])
             new_num_1q_gates = int(num_1q_gates_raw) if num_1q_gates_raw and num_1q_gates_raw.strip().isdigit() else None
 
-            total_gates_raw = st.text_input("Total number of gates", value=record['Total number of gates'])
+            total_gates_raw = st.text_input("Total number of Operations", value=record['Total number of gates'])
             new_total_gates = int(total_gates_raw) if total_gates_raw and total_gates_raw.strip().isdigit() else None
 
             circuit_depth_raw = st.text_input("Circuit depth", value=record['Circuit depth'])
             new_circuit_depth = int(circuit_depth_raw) if circuit_depth_raw and circuit_depth_raw.strip().isdigit() else None
 
-            new_circuit_depth_measure = st.text_input("", value=record['Circuit depth measure'])
+            new_circuit_depth_measure = st.text_input("Circuit depth measure", value=record['Circuit depth measure'])
             new_institution = st.text_input("Institution", value=record['Institution'])
             new_computation = st.text_input("Computation", value=record['Computations'])
             new_computer = st.text_input("Computer", value=record['Computer'])
@@ -567,7 +566,7 @@ def show_user_app():
                     cursor.close()
                     conn.close()
 
-                    st.success(f"Update request submitted: {record['Reference']}")
+                    st.success(f"Update request submitted: {selected_ref}")
                     del st.session_state.update_captcha  # Reset captcha after success
                 else:
                     st.error("🚨 Invalid Captcha")
@@ -579,20 +578,17 @@ def show_user_app():
             
 def show_login_form():
         # --- Page Setup ---
-    st.title("🔬 Count.QuOPS Portal")
-    st.markdown("Welcome! Please log in as an **Admin** or a **User** to continue.")
+    st.title("🔬 Quantum Operation Counts Portal")
 
     # --- Tabs for Login Options ---
     tab1, tab2, tab3, tab4, tab5 = st.tabs(["Visualization", "Computer Overview", "Submit New Datapoint", "Update a Datapoint", "Admin Login"])
 
     data_source = os.getenv('DATA_SOURCE')
 
-
     # define the costant
     length_captcha = 4
     width = 200
     height = 150
-
 
 
     # Database insertion function
@@ -729,10 +725,22 @@ def show_login_form():
 
         
 
-        # Plot in the second column
+       
+
+        # Assume filtered_df, y_axis, b_axis are already defined
         with col2:
-            
-            
+            col5, col6 = st.columns(2)
+
+            with col5:
+                x_axis_scale = st.selectbox("X-axis scale", ["Linear", "Log"], index=0)
+
+            with col6:
+                y_axis_scale = st.selectbox("Y-axis scale", ["Linear", "Log"], index=0)
+        
+
+            # Convert to boolean for Plotly
+            log_x = x_axis_scale == "Log"
+            log_y = y_axis_scale == "Log"
             fig = px.scatter(
                 filtered_df,
                 x='Number of qubits',
@@ -743,9 +751,11 @@ def show_login_form():
                 height=650,
                 width=900,
                 size=b_axis,
-                size_max=60
+                size_max=60,
+                log_x=log_x,
+                log_y=log_y
             )
-        
+
             st.plotly_chart(fig, use_container_width=True)
 
 
@@ -813,21 +823,21 @@ def show_login_form():
         # Only show the form if CAPTCHA passed
         if st.session_state['controllo'] == True:
             with st.form("quantum_form") :
-                reference = st.text_input("Reference (URL or citation)")
+                reference = st.text_input("Reference (URL or citation)*")
                 date = st.date_input("Experiment Date", value=datetime.today())
 
                 computation_raw = st.text_area("Computation (comma-separated list)", help="e.g. QFT, Measurement")
                 error_mitigation_raw = st.text_area("Error Mitigation (comma-separated list)", help="e.g. ZNE, Clifford Data Regression")
 
-                num_qubits = st.number_input("Number of Qubits", min_value=0, step=1)
+                num_qubits = st.number_input("Number of Qubits*", min_value=0, step=1, help = "Number of qubits used in the quantum computation")
 
-                num_2q_gates_raw = st.text_input("Number of Two-Qubit Gates")
+                num_2q_gates_raw = st.text_input("Number of Two-Qubit Operations", help = "Number of two-qubit operations used in the quantum computation")
                 num_2q_gates = int(num_2q_gates_raw) if num_2q_gates_raw.strip().isdigit() else None
 
-                num_1q_gates_raw = st.text_input("Number of Single-Qubit Gates")
+                num_1q_gates_raw = st.text_input("Number of Single-Qubit Operations", help = "Number of siingle-qubit operations used in the quantum computation")
                 num_1q_gates = int(num_1q_gates_raw) if num_1q_gates_raw.strip().isdigit() else None
 
-                total_gates_raw = st.text_input("Total Number of Gates")
+                total_gates_raw = st.text_input("Total Number of Operations",help = "Total number of operations used in the quantum computation, e.g. single-qubit operations + two-qubit operations")
                 total_gates = int(total_gates_raw) if total_gates_raw.strip().isdigit() else None
 
                 circuit_depth_raw = st.text_input("Circuit Depth")
@@ -845,24 +855,29 @@ def show_login_form():
                     del st.session_state["submission_success"]
                 
                 if submit:
-                    st.write("Form submitted!")
-                    st.write("Reference value:", reference)
-                    if reference:
+                    if not reference:
+                        st.error("Please fill out Reference(url or citation) as it is a required field. ")
+                    elif not num_qubits:
+                        st.error("Please fill out Number of Qubits as it is a required field. ")
+                    elif not (num_2q_gates or total_gates):
+                        st.error("Please fill either Number of two-Qubit operations or Total Number of Operations")
+                    
+                    #if reference and num_qubits and (num_2q_gates or total_gates):
+                    else:
                         computation_list = [x.strip() for x in computation_raw.split(",") if x.strip()]
                         error_mitigation_list = [x.strip() for x in error_mitigation_raw.split(",") if x.strip()]
                         success = insert_quantum_datapoint(
                             reference, date, computation_list, num_qubits, num_2q_gates, num_1q_gates, total_gates,
                             circuit_depth, circuit_depth_measure, institution, computer, error_mitigation_list
                         )
-                        print("success")
+                    
                         if success:
                             st.success("Quantum datapoint submitted successfully!")
                             #st.session_state['controllo'] = False
-                            st.session_state.logged_in = 'refresh'
+                            
                             st.session_state.submission_success = True
                             st.rerun()
-                    else:
-                        st.warning("Please fill out at least the reference field.")
+                    
 
 
     with tab4:
@@ -875,10 +890,10 @@ def show_login_form():
             new_date = st.date_input("Date", value=record['Date'])
             new_qubits = st.number_input("Number of Qubits", value=int(record['Number of qubits']))
 
-            num_2q_gates_raw = st.text_input("Number of two Qubits", value=record['Number of two-qubit gates'])
+            num_2q_gates_raw = st.text_input("Number of Two-Qubit Gates", value=record['Number of two-qubit gates'])
             new_num_2q_gates = int(num_2q_gates_raw) if num_2q_gates_raw and num_2q_gates_raw.strip().isdigit() else None
 
-            num_1q_gates_raw = st.text_input("Number of single Qubits", value=record['Number of single-qubit gates'])
+            num_1q_gates_raw = st.text_input("Number of Single-Qubit Gates", value=record['Number of single-qubit gates'])
             new_num_1q_gates = int(num_1q_gates_raw) if num_1q_gates_raw and num_1q_gates_raw.strip().isdigit() else None
 
             total_gates_raw = st.text_input("Total number of gates", value=record['Total number of gates'])
@@ -984,10 +999,10 @@ def show_login_form():
     #             st.error("❌ Invalid user credentials.")
 
 # Main logic
-if st.session_state.logged_in == 'refresh':
-    #show_user_app()
-    show_login_form()
-elif st.session_state.logged_in == 'app':
+# if st.session_state.logged_in == 'refresh':
+#     #show_user_app()
+#     show_login_form()
+if st.session_state.logged_in == 'app':
     #show_user_app()
     show_login_form()
 elif st.session_state.logged_in == 'admin':
