@@ -55,6 +55,11 @@ def get_connection():
         port="5432"
     )
 
+def to_native(val):
+    if isinstance(val, (np.generic,)):  # numpy int64, float64, etc.
+        return val.item()
+    return val
+
 def is_hyperlink(s):
     try:
         result = urlparse(s)
@@ -989,9 +994,13 @@ def show_login_form():
             min_value = 0 if pd.isna(min_value) else min_value
             max_value = 0 if pd.isna(max_value) else max_value
 
+            source_data = [graph_df.columns.tolist()] + [
+                    [to_native(v) for v in row] for row in graph_df.values.tolist()
+                ]
+
             option = {
                 "dataset": [
-                    {"source": [graph_df.columns.tolist()] + graph_df.values.tolist()}
+                    {"source": source_data}
                 ] + [
                     {"transform": {"type": "filter", "config": {"dimension": comp_index, "eq": i}}}
                     for i in computers
@@ -1039,8 +1048,8 @@ def show_login_form():
             
 
             
-            st.write(clicked_id)
-            st.write(st.session_state.clicked_id)
+            # st.write(clicked_id)
+            # st.write(st.session_state.clicked_id)
             
             
             if clicked_id is not None and isinstance(clicked_id,int) and st.session_state.visited==0 :
