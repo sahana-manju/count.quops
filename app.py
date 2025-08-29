@@ -1003,15 +1003,14 @@ def show_login_form():
             min_value = 0 if pd.isna(min_value) else min_value
             max_value = 0 if pd.isna(max_value) else max_value
 
-            print(graph_df.columns)
-            for i in list(graph_df.columns):
-                print(type(graph_df[i]))
-
-            c = [[4, 'https://arxiv.org/abs/2306.09333', '2023-06-15', ['Floquet', 'Trotter'], 46, 1058, '', '', 23.0, 'Cycles', 'Google', 'Sycamore', ['Bitstring postselection'], 'APPROVED', '', 'Floquet, Trotter', 'Bitstring postselection', 2023], [11, 'https://arxiv.org/abs/2004.04174', '2020-04-08', ['VQE'], 12, 72, '', '', 0.0, '', 'Google', 'Sycamore', ['No Data'], 'APPROVED', '', 'VQE', 'No Data', 2020], [12, 'https://arxiv.org/abs/2004.04197', '2020-04-08', ['QAOA'], 23, 345, '', '', 0.0, '', 'Google', 'Sycamore', ['No Data'], 'APPROVED', '', 'QAOA', 'No Data', 2020], [66, 'https://arxiv.org/abs/2107.13571', '2022-03-29', ['QITE', 'VQE'], 11, 1000, '', '', 0.0, '', 'Google', 'Sycamore', ['No Data'], 'APPROVED', 'new', 'QITE, VQE', 'No Data', 2022], [80, 'https://arxiv.org/abs/2204.11372', '2022-04-24', ['Floquet'], 47, 670, '', '', 32.0, 'Cycles', 'Google', 'Sycamore', ['Floquet calibration'], 'APPROVED', 'new datapoints', 'Floquet', 'Floquet calibration', 2022], [90, 'https://arxiv.org/abs/2101.08870', '2021-01-21', ['Random circuit', 'OTOC'], 153, 6500, '', '', 32.0, 'Cycles', 'Google', 'Sycamore', ['No Data'], 'APPROVED', 'move right', 'Random circuit, OTOC', 'No Data', 2021], [95, 'https://arxiv.org/abs/2304.11119', '2023-04-21', ['Random circuit'], 67, 880, '', '', 98.0, 'Cycles', 'Google', 'Sycamore', ['No Data'], 'APPROVED', 'nan', 'Random circuit', 'No Data', 2023], [96, 'https://arxiv.org/abs/2401.08044', '2024-01-16', ['Trotter'], 112, 4400, '', '', 32.0, '  CNOT depth', 'IBM', 'Torino', ['No Data'], 'APPROVED', 'different two', 'Trotter', 'No Data', 2024], [97, 'https://arxiv.org/abs/2312.12831', '2023-12-20', ['VQE'], 12, 200, '', '', 0.0, '', 'Unnamed', 'Unnamed', ['Zero noise extrapolation', 'Pauli twirling', 'Dynamical decoupling'], 'APPROVED', '200', 'VQE', 'Zero noise extrapolation, Pauli twirling, Dynamical decoupling', 2023], [101, 'https new', '2025-08-28', [], 20, 34, '', '', 0.0, '', 'IBM', 'Torino', ['No Data'], 'APPROVED', '', '', 'No Data', 2025], [102, 'https://www.nature.com/articles/s41586-023-06096-3', '2023-06-14', ['Trotter'], 200, 6500, '', '', 45.0, 'CNOT depth', 'IBM', 'Unnamed', ['Zero noise extrapolation', 'Readout error mitigation'], 'APPROVED', 'increased two qubits', 'Trotter', 'Zero noise extrapolation, Readout error mitigation', 2023]]
+            print(bubble_index)
+            print(min_value)
+            print(max_value)
+            print(list(range(len(computers))))
 
             option = {
                 "dataset": [
-                    {"source": [graph_df.columns.tolist()] + c}
+                    {"source": [graph_df.columns.tolist()] + graph_df.values.tolist()}
                 ] + [
                     {"transform": {"type": "filter", "config": {"dimension": comp_index, "eq": i}}}
                     for i in computers
@@ -1032,7 +1031,7 @@ def show_login_form():
                     "min": min_value,
                     "max": max_value,
                     "seriesIndex": list(range(len(computers))),
-                    "inRange": {"symbolSize": [30, 90]}
+                    "inRange": {"symbolSize": [50, 120]}
                 },
                 "series": [
                     {
@@ -1059,8 +1058,8 @@ def show_login_form():
             
 
             
-            #st.write(clicked_id)
-            #st.write(st.session_state.clicked_id)
+            st.write(clicked_id)
+            st.write(st.session_state.clicked_id)
             
             
             if clicked_id is not None and isinstance(clicked_id,int) and st.session_state.visited==0 :
