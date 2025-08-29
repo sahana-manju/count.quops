@@ -870,7 +870,7 @@ def show_login_form():
     # === Tab 1: Visualization ===
     with tab1:
         
-        st.header("Visual Analysis")
+        #st.header("Visual Analysis")
         df = load_transform_data('db')
 
             # Create two columns
@@ -1003,10 +1003,6 @@ def show_login_form():
             min_value = 0 if pd.isna(min_value) else min_value
             max_value = 0 if pd.isna(max_value) else max_value
 
-            print(bubble_index)
-            print(min_value)
-            print(max_value)
-            print(list(range(len(computers))))
 
             bubble_index = int(bubble_index)
             min_value = float(min_value) if min_value is not None else 0
@@ -1028,9 +1024,9 @@ def show_login_form():
                 "legend": {"data": computers, "bottom": 10},
                 "tooltip": {"trigger": "axis", "axisPointer": {"type": "cross"}},
                 "xAxis": {"type": "log" if x_axis_scale == "Log" else "value", "splitLine": {"lineStyle": {"type": "dashed"}},"min": 1,
-    "max": float(graph_df.iloc[:, x_index].max())},
+   },
                 "yAxis": {"type": "log" if y_axis_scale == "Log" else "value", "splitLine": {"lineStyle": {"type": "dashed"}},"min": 1,
-    "max": float(graph_df.iloc[:, y_index].max())},
+   },
                 "visualMap": {
                     "show": False,
                     "dimension": bubble_index,
@@ -1064,8 +1060,8 @@ def show_login_form():
             
 
             
-            st.write(clicked_id)
-            st.write(st.session_state.clicked_id)
+            #st.write(clicked_id)
+            #st.write(st.session_state.clicked_id)
             
             
             if clicked_id is not None and isinstance(clicked_id,int) and st.session_state.visited==0 :
