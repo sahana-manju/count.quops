@@ -1027,8 +1027,10 @@ def show_login_form():
                 },
                 "legend": {"data": computers, "bottom": 10},
                 "tooltip": {"trigger": "axis", "axisPointer": {"type": "cross"}},
-                "xAxis": {"type": "log" if x_axis_scale == "Log" else "value", "splitLine": {"lineStyle": {"type": "dashed"}}},
-                "yAxis": {"type": "log" if y_axis_scale == "Log" else "value", "splitLine": {"lineStyle": {"type": "dashed"}}},
+                "xAxis": {"type": "log" if x_axis_scale == "Log" else "value", "splitLine": {"lineStyle": {"type": "dashed"}},"min": 1,
+    "max": float(graph_df.iloc[:, x_index].max())},
+                "yAxis": {"type": "log" if y_axis_scale == "Log" else "value", "splitLine": {"lineStyle": {"type": "dashed"}},"min": 1,
+    "max": float(graph_df.iloc[:, y_index].max())},
                 "visualMap": {
                     "show": False,
                     "dimension": bubble_index,
