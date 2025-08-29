@@ -1008,6 +1008,10 @@ def show_login_form():
             print(max_value)
             print(list(range(len(computers))))
 
+            bubble_index = int(bubble_index)
+            min_value = float(min_value) if min_value is not None else 0
+            max_value = float(max_value) if max_value is not None else 0
+
             option = {
                 "dataset": [
                     {"source": [graph_df.columns.tolist()] + graph_df.values.tolist()}
