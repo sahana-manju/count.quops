@@ -794,8 +794,7 @@ def show_login_form():
     if "clicked_id" not in st.session_state:
         st.session_state.clicked_id = None
     
-    if "visited" not in st.session_state:
-        st.session_state.visited = 0
+
 
     # --- Tabs for Login Options ---
     tab1, tab2, tab3, tab4, tab5 = st.tabs(["Visualization", "Computer Overview", "Submit New Datapoint", "Update a Datapoint", "Admin Login"])
@@ -1022,7 +1021,7 @@ def show_login_form():
                     "left": "center"
                 },
                 "legend": {"data": computers, "bottom": 10},
-                "tooltip": {"trigger": "axis", "axisPointer": {"type": "cross"}},
+                "tooltip": {"trigger": "axis", "axisPointer": {"type": "cross"},"confine":True,"appendToBody":True},
                 "xAxis": {"type": "log" if x_axis_scale == "Log" else "value", "splitLine": {"lineStyle": {"type": "dashed"}},"min": 1,
    },
                 "yAxis": {"type": "log" if y_axis_scale == "Log" else "value", "splitLine": {"lineStyle": {"type": "dashed"}},"min": 1,
@@ -1040,17 +1039,21 @@ def show_login_form():
                         "name": comp,
                         "type": "scatter",
                         "datasetIndex": idx + 1,  # important: dataset index matches filter
-                        "encode": {"x": x_index, "y": y_index, "tooltip": [0,1, 2, 4, 5,6,7,8,9,10,11,15,16]}
+                        "encode": {"x": x_index, "y": y_index, "tooltip": [0,1, 2, 5,6,7,8,9,10,11,15,16]}
                     }
                     for idx, comp in enumerate(computers)
                 ]
             }
+
+            last_row = st.container()
+            clicked_id = None
+            
             
             clicked_id = st_echarts(
                 option,
                 events={
-                    "dblclick": "function(params) { return params.value[0]; }" ,
-                    #"click": "function(params) { return params.value[1]; }" 
+                    "click": "function(params) { return params.value[0]; }" ,
+                    "dblclick": "function(params) { return params.value[1]; }" 
 
                 },
                 height="500px",
@@ -1059,20 +1062,32 @@ def show_login_form():
 
             
 
-            
-            #st.write(clicked_id)
-            #st.write(st.session_state.clicked_id)
-            
-            
-            if clicked_id is not None and isinstance(clicked_id,int) and st.session_state.visited==0 :
+            if clicked_id is not None and isinstance(clicked_id,int):
                 st.session_state.clicked_id = clicked_id
-                ts = int(time.time() * 1000)
-                html(f"<script>{switch(3)} // trigger for id {clicked_id} at {ts}</script>", height=0)
-            elif  st.session_state.clicked_id != clicked_id and clicked_id is not None  and isinstance(clicked_id,int) :
-                st.session_state.clicked_id = clicked_id
-                ts = int(time.time() * 1000)  # current timestamp in ms
-                html(f"<script>{switch(3)} // trigger for id {clicked_id} at {ts}</script>", height=0)
-            elif  isinstance(clicked_id,str) and is_hyperlink(clicked_id):
+
+            if clicked_id is not None and isinstance(clicked_id,int):
+                # Inject CSS to make Streamlit button green
+                st.markdown(
+                    """
+                    <style>
+                    div.stButton > button:first-child {
+                        background-color: #4CAF50;
+                        color:white;
+                    }
+                    div.stButton > button:first-child:hover {
+                        background-color: #45a049;
+                        color:white;
+                    }
+                    </style>
+                    """,
+                    unsafe_allow_html=True,
+                )
+            
+
+                if last_row.button(f"Point id {st.session_state.clicked_id} selected Click here to update datapoint"):
+                    ts = int(time.time() * 1000)
+                    html(f"<script>{switch(3)} // trigger for id {clicked_id} at {ts}</script>", height=0)
+            elif clicked_id is not None and isinstance(clicked_id,str):
                 st.components.v1.html(
                     f"""
                     <script>
@@ -1081,6 +1096,33 @@ def show_login_form():
                     """,
                     height=0
                 )
+
+
+            
+
+            
+            #st.write(clicked_id)
+            #st.write(st.session_state.clicked_id)
+            
+            
+            # if clicked_id is not None and isinstance(clicked_id,int) and st.session_state.visited==0 :
+            #     st.session_state.clicked_id = clicked_id
+            #     ts = int(time.time() * 1000)
+                
+            #     html(f"<script>{switch(3)} // trigger for id {clicked_id} at {ts}</script>", height=0)
+            # elif  st.session_state.clicked_id != clicked_id and clicked_id is not None  and isinstance(clicked_id,int) :
+            #     st.session_state.clicked_id = clicked_id
+            #     ts = int(time.time() * 1000)  # current timestamp in ms
+            #     html(f"<script>{switch(3)} // trigger for id {clicked_id} at {ts}</script>", height=0)
+            # elif  isinstance(clicked_id,str) and is_hyperlink(clicked_id):
+            #     st.components.v1.html(
+            #         f"""
+            #         <script>
+            #             window.open("{clicked_id}", "_blank");
+            #         </script>
+            #         """,
+            #         height=0
+            #     )
 
             
 
