@@ -257,10 +257,14 @@ def admin_interface():
                 if st.button("Save Changes"):
                     if not ref:
                         st.error("Please fill out Reference(url or citation) as it is a required field. ")
-                    elif not new_qubits:
+                    if not new_qubits:
                         st.error("Please fill out Number of Qubits as it is a required field. ")
-                    elif not (new_num_2q_gates or new_total_gates):
+                    if not (new_num_2q_gates or new_total_gates):
                         st.error("Please fill either Number of two-Qubit operations or Total Number of Operations")
+                    if not new_institution:
+                        st.error("Please fill out Institution as it is a required field. ")
+                    if not new_computer:
+                        st.error("Please fill out Computer as it is a required field. ")
                     else:
                         conn = get_connection()
                         cursor = conn.cursor()
@@ -1025,6 +1029,7 @@ def show_login_form():
                 "xAxis": {"type": "log" if x_axis_scale == "Log" else "value", "splitLine": {"lineStyle": {"type": "dashed"}},"min": 1,
    },
                 "yAxis": {"type": "log" if y_axis_scale == "Log" else "value", "splitLine": {"lineStyle": {"type": "dashed"}},"min": 1,
+                       
    },
                 "visualMap": {
                     "show": False,
@@ -1215,8 +1220,8 @@ def show_login_form():
 
                 circuit_depth_measure = st.text_input("Circuit Depth Measure", help="The measure/metric used for circuit depth, for example two-qubit gate layers, Trotter step, etc. Number of two-qubit operations and/or total number of operations is preferred to this metric, and this should be used only when these are unknown. ")
 
-                institution = st.text_input("Institution", help="Who owns the quantum computer, e.g. Google, Quantinuum, QuEra")
-                computer = st.text_input("Computer", help="The name or other identifying label for the quantum computer")
+                institution = st.text_input("Institution*", help="Who owns the quantum computer, e.g. Google, Quantinuum, QuEra")
+                computer = st.text_input("Computer*", help="The name or other identifying label for the quantum computer")
 
                 submit = st.form_submit_button("Submit")
           
@@ -1227,9 +1232,13 @@ def show_login_form():
                 if submit:
                     if not reference:
                         st.error("Please fill out Reference(url or citation) as it is a required field. ")
-                    elif not num_qubits:
+                    if not num_qubits:
                         st.error("Please fill out Number of Qubits as it is a required field. ")
-                    elif not (num_2q_gates or total_gates):
+                    if not institution:
+                        st.error("Please fill out Institution as it is a required field. ")
+                    if not computer:
+                        st.error("Please fill out Computer as it is a required field. ")
+                    if not (num_2q_gates or total_gates):
                         st.error("Please fill either Number of two-Qubit operations or Total Number of Operations")
                     
                     #if reference and num_qubits and (num_2q_gates or total_gates):
@@ -1325,10 +1334,14 @@ def show_login_form():
                 if st.session_state.update_captcha.lower() == captcha_input1.strip().lower():
                     if not new_ref:
                         st.error("Please fill out Reference(url or citation) as it is a required field. ")
-                    elif not new_qubits:
+                    if not new_qubits:
                         st.error("Please fill out Number of Qubits as it is a required field. ")
-                    elif not (new_num_2q_gates or new_total_gates):
+                    if not (new_num_2q_gates or new_total_gates):
                         st.error("Please fill either Number of two-Qubit operations or Total Number of Operations")
+                    if not new_institution:
+                        st.error("Please fill out Institution as it is a required field. ")
+                    if not new_computer:
+                        st.error("Please fill out Computer as it is a required field. ")
                     
                     #if reference and num_qubits and (num_2q_gates or total_gates):
                     else:
