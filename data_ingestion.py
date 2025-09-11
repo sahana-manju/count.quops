@@ -139,7 +139,6 @@ def rename_missing_data(df: pd.DataFrame) -> pd.DataFrame:
     Cleans and standardizes specific columns in the DataFrame:
     - Strips whitespace from 'Institution' and fills missing values with 'Unnamed'.
     - Fills missing values in 'Computer' with 'Unnamed'.
-    - Fills missing values in 'Error mitigation' and its duplicate columns with 'No Data'.
 
     Args:
         df (pd.DataFrame): The input DataFrame to clean.
@@ -158,11 +157,11 @@ def rename_missing_data(df: pd.DataFrame) -> pd.DataFrame:
         logger.debug("Filled missing values in 'Computer' column.")
 
         # Fill missing values for 'Error mitigation' and its variants
-        base_col = 'Error mitigation'
-        for col in df.columns:
-            if col == base_col or col.startswith(f'{base_col}_'):
-                df[col] = df[col].fillna('No Data')
-        logger.debug("Filled missing values in Error mitigation related columns.")
+        # base_col = 'Error mitigation'
+        # for col in df.columns:
+        #     if col == base_col or col.startswith(f'{base_col}_'):
+        #         df[col] = df[col].fillna('No Data')
+        # logger.debug("Filled missing values in Error mitigation related columns.")
 
         return df
 
@@ -202,9 +201,9 @@ def transform_db_data(df: pd.DataFrame)->pd.DataFrame:
     df['Computations'] = df['computation'].apply(
     lambda x: ', '.join(x) if isinstance(x, list) else ''
     )
-    df['Error mitigations'] = df['error_mitigation'].apply(
-    lambda x: ', '.join(x) if isinstance(x, list) else ''
-    )
+    # df['Error mitigations'] = df['error_mitigation'].apply(
+    # lambda x: ', '.join(x) if isinstance(x, list) else ''
+    # )
     df['Year'] = pd.to_datetime(df['date'], errors='coerce').dt.year
 
     # Imputing missing values
@@ -217,12 +216,12 @@ def transform_db_data(df: pd.DataFrame)->pd.DataFrame:
     df['institution'] = df['institution'].astype(str).str.strip()
     df['institution'] = df['institution'].replace('', np.nan).fillna('Unnamed')
 
-    df['error_mitigation'] = df['error_mitigation'].apply(
-    lambda x: ['No Data'] if isinstance(x, list) and len(x) == 0 else x
-    )
+    # df['error_mitigation'] = df['error_mitigation'].apply(
+    # lambda x: ['No Data'] if isinstance(x, list) and len(x) == 0 else x
+    # )
 
-    # Handle error_mitigation: Replace NaN or empty lists with 'No Data'
-    df['Error mitigations'] = df['Error mitigations'].apply(clean_error_mitigation)
+    # # Handle error_mitigation: Replace NaN or empty lists with 'No Data'
+    # df['Error mitigations'] = df['Error mitigations'].apply(clean_error_mitigation)
 
     # Rename columns
     df = df.rename(columns={
@@ -237,7 +236,7 @@ def transform_db_data(df: pd.DataFrame)->pd.DataFrame:
     'circuit_depth_measure':'Circuit depth measure',
     'institution':'Institution',
     'computer':	'Computer',	
-    'error_mitigation':'Error mitigation',
+    #'error_mitigation':'Error mitigation',
     })
 
     return df

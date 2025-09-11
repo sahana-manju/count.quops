@@ -11,6 +11,7 @@ from pyecharts.commons.utils import JsCode
 import numpy as np
 import pandas as pd
 from data_ingestion import load_transform_data,load_comp_data_from_db
+import math
 
 import os
 from dotenv import load_dotenv
@@ -235,7 +236,6 @@ def admin_interface():
                 'circuit_depth_measure':'Circuit depth measure',
                 'institution':'Institution',
                 'computer':	'Computer',	
-                'error_mitigation':'Error mitigation',
                 })
             
             record = df_all[df_all['id'] == id_selected]
@@ -278,11 +278,11 @@ def admin_interface():
                 new_institution = st.text_input("Institution", value=record['Institution'])
                 new_computation = st.text_input("Computation", value=record['Computations'])
                 new_computer = st.text_input("Computer", value=record['Computer'])
-                new_mitigation = st.text_input("Error Mitigations", value=record['Error mitigations'])
+                #new_mitigation = st.text_input("Error Mitigations", value=record['Error mitigations'])
                 new_feedback = st.text_input("Comments", value=record['feedback'])
 
                 computation_list = [x.strip() for x in new_computation.split(",") if x.strip()]
-                error_mitigation_list = [x.strip() for x in new_mitigation.split(",") if x.strip()]
+                #error_mitigation_list = [x.strip() for x in new_mitigation.split(",") if x.strip()]
 
 
                 if st.button("Save Changes"):
@@ -314,7 +314,6 @@ def admin_interface():
                                 circuit_depth_measure = %s,
                                 institution = %s,
                                 computer = %s,
-                                error_mitigation = %s,
                                 status = %s,
                                 feedback = %s
                             WHERE id = %s
@@ -330,7 +329,6 @@ def admin_interface():
                             new_circuit_depth_measure,
                             new_institution,
                             new_computer,
-                            psycopg2.extras.Json(error_mitigation_list),
                             status,
                             new_feedback,
                             int(record["id"]))
@@ -860,7 +858,7 @@ def show_login_form():
     # Database insertion function
     def insert_quantum_datapoint(
         reference, date, computation, num_qubits, num_2q_gates, num_1q_gates, total_gates,
-        circuit_depth, circuit_depth_measure, institution, computer, error_mitigation
+        circuit_depth, circuit_depth_measure, institution, computer
     ):
         try:
             conn = get_connection()
@@ -872,9 +870,9 @@ def show_login_form():
                     reference, date, computation,
                     num_qubits, num_2q_gates, num_1q_gates, total_gates,
                     circuit_depth, circuit_depth_measure,
-                    institution, computer, error_mitigation
+                    institution, computer
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """, (
                 reference,
                 date,
@@ -886,8 +884,7 @@ def show_login_form():
                 circuit_depth,
                 circuit_depth_measure,
                 institution,
-                computer,
-                psycopg2.extras.Json(error_mitigation)
+                computer
             ))
             
             conn.commit()
@@ -926,15 +923,15 @@ def show_login_form():
 
             # Error mitigation filter
             # Flatten the list and get unique values
-            unique_items = set(item for sublist in df['Error mitigation'] for item in sublist)
+            #unique_items = set(item for sublist in df['Error mitigation'] for item in sublist)
 
             # If you want it as a list
-            error_methods = list(unique_items)
-            # error_methods = [
-            #     'Bitstring postselection', 'Dynamical decoupling', 'Floquet calibration', 'Pauli twirling',
-            #     'Probabilistic error amplification', 'Readout error mitigation', 'Zero noise extrapolation', 'No Data'
-            # ]
-            selected_errors = st.multiselect("Select Error Mitigation", error_methods, default=error_methods)
+            # error_methods = list(unique_items)
+            # # error_methods = [
+            # #     'Bitstring postselection', 'Dynamical decoupling', 'Floquet calibration', 'Pauli twirling',
+            # #     'Probabilistic error amplification', 'Readout error mitigation', 'Zero noise extrapolation', 'No Data'
+            # # ]
+            # selected_errors = st.multiselect("Select Error Mitigation", error_methods, default=error_methods)
 
             # Y-axis selection
             y_options = [
@@ -964,32 +961,41 @@ def show_login_form():
                 # Scale to a desired range (e.g., 10–60)
                 df['bubble_size'] = df['bubble_size'] * 50 + 10  # range from 10 to 60
                 b_axis = 'bubble_size'
+
+            col5,col6 = st.columns(2)
+
+            with col5:
+                x_axis_scale = st.selectbox("X-axis scale", ["Linear", "Log"], index=0)
+            with col6:
+                y_axis_scale = st.selectbox("Y-axis scale", ["Linear", "Log"], index=0)
         
         if data_source == 'sheet':
         # Filter DataFrame
             filtered_df = df[
                 (df['Institution'].isin(selected_comps)) &
                 (df['Computer'].isin(selected_computers)) &
-                (df['Year'].isin(selected_years)) &
-                (
-                    df['Error mitigation'].isin(selected_errors) |
-                    df['Error mitigation_1'].isin(selected_errors) |
-                    df['Error mitigation_2'].isin(selected_errors) |
-                    df['Error mitigation_3'].isin(selected_errors)
-                )
+                (df['Year'].isin(selected_years)) 
+                # &
+                # (
+                #     df['Error mitigation'].isin(selected_errors) |
+                #     df['Error mitigation_1'].isin(selected_errors) |
+                #     df['Error mitigation_2'].isin(selected_errors) |
+                #     df['Error mitigation_3'].isin(selected_errors)
+                # )
             ]
         else:
              # Filter DataFrame
             filtered_df = df[
                 (df['Institution'].isin(selected_comps)) &
                 (df['Computer'].isin(selected_computers)) &
-                (df['Year'].isin(selected_years)) &
-                (
-                      df['Error mitigation'].apply(
-                     lambda x: bool(set(x) & set(selected_errors)) if isinstance(x, list) else False
-                     )
+                (df['Year'].isin(selected_years)) 
+                # &
+                # (
+                #       df['Error mitigation'].apply(
+                #      lambda x: bool(set(x) & set(selected_errors)) if isinstance(x, list) else False
+                #      )
                 
-                )
+                # )
             ]
 
 
@@ -997,17 +1003,12 @@ def show_login_form():
 
         
 
+        
+
        
 
         # Assume filtered_df, y_axis, b_axis are already defined
         with col2:
-            col5, col6 = st.columns(2)
-
-            with col5:
-                x_axis_scale = st.selectbox("X-axis scale", ["Linear", "Log"], index=0)
-
-            with col6:
-                y_axis_scale = st.selectbox("Y-axis scale", ["Linear", "Log"], index=0)
         
 
             graph_df = filtered_df.copy()
@@ -1100,7 +1101,7 @@ def show_login_form():
                         "name": comp,
                         "type": "scatter",
                         "datasetIndex": idx + 1,  # important: dataset index matches filter
-                        "encode": {"x": x_index, "y": y_index, "tooltip": [0,1, 2, 5,6,7,8,9,10,11,15,16]}
+                        "encode": {"x": x_index, "y": y_index, "tooltip": [0,1, 2, 5,6,7,8,9,10,11,15]}
                     }
                     for idx, comp in enumerate(computers)
                 ]
@@ -1284,8 +1285,8 @@ def show_login_form():
                 st.markdown('<div class="black-label">Computation (comma-separated list)</div>', unsafe_allow_html=True)
                 computation_raw = st.text_area("", help="The algorithm used/computation performed, for example Trotter, VQE, Phase estimation")
 
-                st.markdown('<div class="black-label">Error Mitigation (comma-separated list)</div>', unsafe_allow_html=True)
-                error_mitigation_raw = st.text_area("", help="e.g. ZNE, Clifford Data Regression")
+                # st.markdown('<div class="black-label">Error Mitigation (comma-separated list)</div>', unsafe_allow_html=True)
+                # error_mitigation_raw = st.text_area("", help="e.g. ZNE, Clifford Data Regression")
 
                 st.markdown('<div class="green-label">Number of Qubits<span style="font-size:20px; color:red;">*</span></div>', unsafe_allow_html=True)
                 num_qubits = st.number_input("", min_value=0, step=1, help = "Number of qubits used in the quantum computation")
@@ -1336,10 +1337,10 @@ def show_login_form():
                     #if reference and num_qubits and (num_2q_gates or total_gates):
                     else:
                         computation_list = [x.strip() for x in computation_raw.split(",") if x.strip()]
-                        error_mitigation_list = [x.strip() for x in error_mitigation_raw.split(",") if x.strip()]
+                        #error_mitigation_list = [x.strip() for x in error_mitigation_raw.split(",") if x.strip()]
                         success = insert_quantum_datapoint(
                             reference, date, computation_list, num_qubits, num_2q_gates, num_1q_gates, total_gates,
-                            circuit_depth, circuit_depth_measure, institution, computer, error_mitigation_list
+                            circuit_depth, circuit_depth_measure, institution, computer
                         )
                     
                         if success:
@@ -1404,11 +1405,11 @@ def show_login_form():
             new_institution = st.text_input("Institution", value=record['Institution'], help="Who owns the quantum computer, e.g. Google, Quantinuum, QuEra")
             new_computation = st.text_input("Computation", value=record['Computations'], help="e.g. QFT, Measurement")
             new_computer = st.text_input("Computer", value=record['Computer'], help="The name or other identifying label for the quantum computer")
-            new_mitigation = st.text_input("Error Mitigations", value=record['Error mitigations'], help="e.g. ZNE, Clifford Data Regression")
+            #new_mitigation = st.text_input("Error Mitigations", value=record['Error mitigations'], help="e.g. ZNE, Clifford Data Regression")
             new_feedback = st.text_input("Comments", value=record['feedback'], help="Please mention what changes you made")
 
             computation_list = [x.strip() for x in new_computation.split(",") if x.strip()]
-            error_mitigation_list = [x.strip() for x in new_mitigation.split(",") if x.strip()]
+            #error_mitigation_list = [x.strip() for x in new_mitigation.split(",") if x.strip()]
 
             # --- CAPTCHA ---
             col3, col4 = st.columns(2)
@@ -1446,9 +1447,9 @@ def show_login_form():
                                 reference, date, computation,
                                 num_qubits, num_2q_gates, num_1q_gates, total_gates,
                                 circuit_depth, circuit_depth_measure,
-                                institution, computer, error_mitigation, status, feedback
+                                institution, computer, status, feedback
                             )
-                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                         """, (
                             new_ref,
                             new_date,
@@ -1461,7 +1462,6 @@ def show_login_form():
                             new_circuit_depth_measure,
                             new_institution,
                             new_computer,
-                            psycopg2.extras.Json(error_mitigation_list),
                             status,
                             new_feedback
                         ))
