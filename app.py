@@ -6,6 +6,7 @@ import plotly.io as pio
 pio.templates.default = "plotly"
 from streamlit_echarts import st_echarts
 from streamlit.components.v1 import html
+from pyecharts.commons.utils import JsCode
 
 import numpy as np
 import pandas as pd
@@ -54,6 +55,7 @@ def get_connection():
         password=os.getenv("DB_PASSWORD"),
         port="5432"
     )
+
 
 def df_to_json_safe(df: pd.DataFrame):
     """
@@ -167,19 +169,48 @@ def admin_interface():
         id_selected= st.selectbox("Select the id",df_ids)
         operations = st.selectbox("Select the operation to be performed",['Delete','Update'])
 
-        if operations== "Delete":
+        # Initialize session state variables
+        if "delete_requested" not in st.session_state:
+            st.session_state.delete_requested = False
+        if "delete_confirmed" not in st.session_state:
+            st.session_state.delete_confirmed = False
 
-            if st.button("Confirm Delete"):
+        if operations == "Delete":
+            # Step 1: User clicks "Delete Record"
+            if st.button("Delete Record"):
+                st.session_state.delete_requested = True
+
+            # Step 2: Show confirmation buttons
+            if st.session_state.delete_requested and not st.session_state.delete_confirmed:
+                col1, col2 = st.columns(2)
+                with col1:
+                    if st.button("✅ Confirm Deletion"):
+                        st.session_state.delete_confirmed = True
+                with col2:
+                    if st.button("❌ Cancel"):
+                        st.session_state.delete_requested = False
+                        st.session_state.delete_confirmed = False
+                        st.warning("Deletion cancelled.")
+                        st.rerun()
+
+            # Step 3: Actually delete the record
+            if st.session_state.delete_confirmed:
                 conn = get_connection()
                 cur = conn.cursor(cursor_factory=RealDictCursor)
-                cur.execute("DELETE FROM quant_data where id = %s",(int(id_selected),))
+                cur.execute("DELETE FROM quant_data WHERE id = %s", (int(id_selected),))
                 conn.commit()
                 cur.close()
                 conn.close()
-                st.success("Successfully deleted the record")
-       
-                if st.button("Hit Refresh to see changes"):
+                st.success("✅ Successfully deleted the record.")
+
+                if st.button("🔄 Click to refresh and see updates"):
+                    st.session_state.delete_requested = False
+                    st.session_state.delete_confirmed = False
                     st.rerun()
+
+                
+       
+                
 
 
 
@@ -268,7 +299,7 @@ def admin_interface():
                     else:
                         conn = get_connection()
                         cursor = conn.cursor()
-                        status = "  APPROVED"
+                        status = "APPROVED"
 
                         cursor.execute("""
                             UPDATE quant_data SET
@@ -312,7 +343,7 @@ def admin_interface():
 
                         st.success(f"Update done for ID : {record['id']}")
 
-                        if st.button("Hit Refresh to see changes"):
+                        if st.button("Click to refresh and see updates"):
                             st.rerun()
                             
 
@@ -791,7 +822,7 @@ def admin_interface():
             
 def show_login_form():
         # --- Page Setup ---
-    st.title("🔬 Quantum Operation Counts Portal")
+    st.title("🔬 Quantum Operations (QuOps) Info")
 
 
 
@@ -883,15 +914,15 @@ def show_login_form():
         with col1:
             # Institution filter
             comp_options = list(df['Institution'].unique())
-            selected_comps = st.multiselect("Select Institution Types", comp_options, default=comp_options)
+            selected_comps = st.multiselect("Institution", comp_options, default=comp_options)
 
             # Computer filter based on Institution
             filtered_computer_options = df[df['Institution'].isin(selected_comps)]['Computer'].dropna().unique()
-            selected_computers = st.multiselect("Select Computers", filtered_computer_options, default=filtered_computer_options)
+            selected_computers = st.multiselect("Computer", filtered_computer_options, default=filtered_computer_options)
 
             # Year filter
             years = sorted(df['Year'].dropna().unique())
-            selected_years = st.multiselect("Select Years", years, default=years)
+            selected_years = st.multiselect("Year", years, default=years)
 
             # Error mitigation filter
             error_methods = [
@@ -907,7 +938,7 @@ def show_login_form():
                 'Total number of gates',
                 'Circuit depth'
             ]
-            y_axis = st.selectbox("Select Y-axis", y_options)
+            y_axis = st.selectbox("Vertical axis", y_options)
 
             # B-axis selection
             b_options = [
@@ -994,10 +1025,10 @@ def show_login_form():
             y_index = graph_df.columns.get_loc(y_axis)
 
             
+            graph_df["Comp_Inst"] = graph_df["Institution"] + " " + graph_df["Computer"]
+            computers = list(graph_df["Comp_Inst"].unique())
 
-            computers = list(graph_df["Computer"].unique())
-
-            comp_index = graph_df.columns.get_loc("Computer")
+            comp_index = graph_df.columns.get_loc("Comp_Inst")
 
             bubble_index = graph_df.columns.get_loc(b_axis)
             min_value = graph_df.iloc[:, bubble_index].min()
@@ -1011,6 +1042,7 @@ def show_login_form():
             min_value = float(min_value) if min_value is not None else 0
             max_value = float(max_value) if max_value is not None else 0
 
+
             option = {
                 "dataset": [
                     {"source": [graph_df.columns.tolist()] + graph_df.values.tolist()}
@@ -1019,16 +1051,35 @@ def show_login_form():
                     for i in computers
                 ],
                 "title": {
-                    "text": "Quantum Points",
-                    "subtext": "Please click on the datapoint you would like to update.",
-                    "sublink": "https://count.quops.com",
+                    #"text": "Quantum Points",
+                   # "subtext": "Please click on the datapoint you would like to update.",
+                    #"sublink": "https://count.quops.com",
                     "left": "center"
                 },
-                "legend": {"data": computers, "bottom": 10},
-                "tooltip": {"trigger": "axis", "axisPointer": {"type": "cross"},"confine":True,"appendToBody":True},
+                "legend": {"data": computers, "bottom": 1},
+                "tooltip": {"trigger": "item","confine":True,"appendToBody":True},
                 "xAxis": {"type": "log" if x_axis_scale == "Log" else "value", "splitLine": {"lineStyle": {"type": "dashed"}},"min": 1,
+                          "name": "Number of qubits",         
+                          "nameLocation": "middle",          
+                          "nameGap": 30 ,
+                           "axisLabel": {
+            "formatter": JsCode(
+                # one-line JS required
+                "function (val) { var e = Math.log10(val); var map = {'0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹','-':'⁻'}; return '10' + e.toString().split('').map(function(c){return map[c]||c}).join(''); }"
+            ).js_code if x_axis_scale == "Log" else "{value}"  # this makes labels show as powers of 10
+        }
    },
                 "yAxis": {"type": "log" if y_axis_scale == "Log" else "value", "splitLine": {"lineStyle": {"type": "dashed"}},"min": 1,
+                          "name": y_axis,         
+                         "nameLocation": "middle",          
+                         "nameGap": 50 ,
+                          "axisLabel": {
+            "formatter": JsCode(
+                # one-line JS required
+                "function (val) { var e = Math.log10(val); var map = {'0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹','-':'⁻'}; return '10' + e.toString().split('').map(function(c){return map[c]||c}).join(''); }"
+            ).js_code if y_axis_scale == "Log" else "{value}"  # this makes labels show as powers of 10
+        }
+                    
                        
    },
                 "visualMap": {
@@ -1162,7 +1213,7 @@ def show_login_form():
     
     with tab3:
 
-        st.header("Submit Quantum Datapoint")
+        #st.header("Submit Quantum Datapoint")
 
         
         # CAPTCHA Verification First
@@ -1170,7 +1221,7 @@ def show_login_form():
             st.session_state['controllo'] = False
       
         if st.session_state['controllo'] == False:
-            st.markdown("Please validate you are not a robot before submitting")
+            st.markdown("Confirm humanity")
 
             col1, col2 = st.columns([1, 1])
 
@@ -1183,11 +1234,11 @@ def show_login_form():
 
             captcha_input = col2.text_area('Enter captcha text', height=30)
 
-            if st.button("Verify the code"):
+            if st.button("Verify"):
                 if st.session_state['Captcha'].lower() == captcha_input.strip().lower():
                     del st.session_state['Captcha']
                     st.session_state['controllo'] = True
-                    #st.rerun()
+                    st.rerun()
                 else:
                     st.error("🚨 Invalid Captcha")
                     del st.session_state['Captcha']
@@ -1196,32 +1247,68 @@ def show_login_form():
             #st.stop()  # Stop here until CAPTCHA is verified
 
         # Only show the form if CAPTCHA passed
-        if st.session_state['controllo'] == True:
+        
+        elif st.session_state['controllo'] == True:
+            st.markdown("""
+            <style>
+                /* Hide the default Streamlit label */
+                label[for="reference_input"] {
+                    display: none;
+                }
+                /* Make the custom label green */
+                .green-label {
+                    color: green;
+                    font-weight:bold;
+
+                }
+                .black-label{
+                    color:black;
+                    
+                }
+            </style>
+        """, unsafe_allow_html=True)
             with st.form("quantum_form") :
-                reference = st.text_input("Reference (URL or citation)*", help = "The reference for the quantum computation, typically an arXiv or journal link")
-                date = st.date_input("Experiment Date", value=datetime.today())
+                st.markdown("All field highlighted in green with asterick are required fields")
 
-                computation_raw = st.text_area("Computation (comma-separated list)", help="e.g. QFT, Measurement")
-                error_mitigation_raw = st.text_area("Error Mitigation (comma-separated list)", help="e.g. ZNE, Clifford Data Regression")
+                st.markdown('<div class="green-label">Reference<span style="font-size:20px; color:red;">*</span></div>', unsafe_allow_html=True)
+                reference = st.text_input(label='', key="reference_input", help = "The reference for the quantum computation, typically an arXiv or journal link")
 
-                num_qubits = st.number_input("Number of Qubits*", min_value=0, step=1, help = "Number of qubits used in the quantum computation")
+                st.markdown('<div class="black-label">Experiment Date</div>', unsafe_allow_html=True)
+                date = st.date_input("", value=datetime.today(), help="The date the experiment was performed or published (typically the date of the reference)")
+                
+                st.markdown('<div class="black-label">Computation (comma-separated list)</div>', unsafe_allow_html=True)
+                computation_raw = st.text_area("", help="The algorithm used/computation performed, for example Trotter, VQE, Phase estimation")
 
-                num_2q_gates_raw = st.text_input("Number of Two-Qubit Operations", help = "Number of two-qubit operations used in the quantum computation")
+                st.markdown('<div class="black-label">Error Mitigation (comma-separated list)</div>', unsafe_allow_html=True)
+                error_mitigation_raw = st.text_area("", help="e.g. ZNE, Clifford Data Regression")
+
+                st.markdown('<div class="green-label">Number of Qubits<span style="font-size:20px; color:red;">*</span></div>', unsafe_allow_html=True)
+                num_qubits = st.number_input("", min_value=0, step=1, help = "Number of qubits used in the quantum computation")
+
+                st.markdown('<div class="black-label">Number of Two-Qubit Operations</div>', unsafe_allow_html=True)
+                num_2q_gates_raw = st.text_input("", help = "Number of two-qubit operations used in the quantum computation")
                 num_2q_gates = int(num_2q_gates_raw) if num_2q_gates_raw.strip().isdigit() else None
 
-                num_1q_gates_raw = st.text_input("Number of Single-Qubit Operations", help = "Number of siingle-qubit operations used in the quantum computation")
+                st.markdown('<div class="black-label">Number of Single-Qubit Operations</div>', unsafe_allow_html=True)
+                num_1q_gates_raw = st.text_input("", help = "Number of siingle-qubit operations used in the quantum computation")
                 num_1q_gates = int(num_1q_gates_raw) if num_1q_gates_raw.strip().isdigit() else None
 
-                total_gates_raw = st.text_input("Total Number of Operations",help = "Total number of operations used in the quantum computation, e.g. single-qubit operations + two-qubit operations")
+                st.markdown('<div class="black-label">Total Number of Operations</div>', unsafe_allow_html=True)
+                total_gates_raw = st.text_input("",help = "Total number of operations used in the quantum computation, e.g. single-qubit operations + two-qubit operations")
                 total_gates = int(total_gates_raw) if total_gates_raw.strip().isdigit() else None
 
-                circuit_depth_raw = st.text_input("Circuit Depth", help = "The depth of the circuit in the quantum computation (see Circuit Depth Measure).")
+                st.markdown('<div class="black-label">Circuit Depth</div>', unsafe_allow_html=True)
+                circuit_depth_raw = st.text_input("", help = "The depth of the circuit in the quantum computation (see Circuit Depth Measure).")
                 circuit_depth = int(circuit_depth_raw) if circuit_depth_raw.strip().isdigit() else None
 
-                circuit_depth_measure = st.text_input("Circuit Depth Measure", help="The measure/metric used for circuit depth, for example two-qubit gate layers, Trotter step, etc. Number of two-qubit operations and/or total number of operations is preferred to this metric, and this should be used only when these are unknown. ")
+                st.markdown('<div class="black-label">Circuit Depth Measure</div>', unsafe_allow_html=True)
+                circuit_depth_measure = st.text_input("", help="The measure/metric used for circuit depth, for example two-qubit gate layers, Trotter step, etc. Number of two-qubit operations and/or total number of operations is preferred to this metric, and this should be used only when these are unknown. ")
 
-                institution = st.text_input("Institution*", help="Who owns the quantum computer, e.g. Google, Quantinuum, QuEra")
-                computer = st.text_input("Computer*", help="The name or other identifying label for the quantum computer")
+                st.markdown('<div class="green-label">Institution<span style="font-size:20px; color:red;">*</span></div>', unsafe_allow_html=True)
+                institution = st.text_input("", help="Who owns the quantum computer, e.g. Google, Quantinuum, QuEra")
+                
+                st.markdown('<div class="green-label">Computer<span style="font-size:20px; color:red;">*</span></div>', unsafe_allow_html=True)
+                computer = st.text_input("", help="The name or other identifying label for the quantum computer")
 
                 submit = st.form_submit_button("Submit")
           
