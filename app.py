@@ -925,10 +925,15 @@ def show_login_form():
             selected_years = st.multiselect("Year", years, default=years)
 
             # Error mitigation filter
-            error_methods = [
-                'Bitstring postselection', 'Dynamical decoupling', 'Floquet calibration', 'Pauli twirling',
-                'Probabilistic error amplification', 'Readout error mitigation', 'Zero noise extrapolation', 'No Data'
-            ]
+            # Flatten the list and get unique values
+            unique_items = set(item for sublist in df['Error mitigation'] for item in sublist)
+
+            # If you want it as a list
+            error_methods = list(unique_items)
+            # error_methods = [
+            #     'Bitstring postselection', 'Dynamical decoupling', 'Floquet calibration', 'Pauli twirling',
+            #     'Probabilistic error amplification', 'Readout error mitigation', 'Zero noise extrapolation', 'No Data'
+            # ]
             selected_errors = st.multiselect("Select Error Mitigation", error_methods, default=error_methods)
 
             # Y-axis selection
