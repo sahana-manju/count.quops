@@ -1460,7 +1460,7 @@ def show_login_form():
             except:
                 st.error("Invalid input. Please input a valid number")
                 
-            new_circuit_depth_measure = st.text_input("", value=record['Circuit depth measure'], help="The measure/metric used for circuit depth, for example two-qubit gate layers, Trotter step, etc. Number of two-qubit operations and/or total number of operations is preferred to this metric, and this should be used only when these are unknown. ")
+            new_circuit_depth_measure = st.text_input("Circuit depth measure", value=record['Circuit depth measure'], help="The measure/metric used for circuit depth, for example two-qubit gate layers, Trotter step, etc. Number of two-qubit operations and/or total number of operations is preferred to this metric, and this should be used only when these are unknown. ")
             new_institution = st.text_input("Institution", value=record['Institution'], help="Who owns the quantum computer, e.g. Google, Quantinuum, QuEra")
             new_computation = st.text_input("Computation", value=record['Computations'], help="e.g. QFT, Measurement")
             new_computer = st.text_input("Computer", value=record['Computer'], help="The name or other identifying label for the quantum computer")
