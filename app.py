@@ -830,7 +830,7 @@ def show_login_form():
 
 
     # --- Tabs for Login Options ---
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(["Visualization", "Computer Overview", "Submit New Datapoint", "Update a Datapoint", "Admin Login"])
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["About","Visualization", "Submit New Datapoint", "Update a Datapoint", "Admin Login"])
 
     
 
@@ -853,7 +853,8 @@ def show_login_form():
     length_captcha = 4
     width = 200
     height = 150
-
+    
+    html(f"<script>{switch(1)} </script>", height=0)
 
     # Database insertion function
     def insert_quantum_datapoint(
@@ -896,10 +897,61 @@ def show_login_form():
         finally:
             cursor.close()
             conn.close()
+    with tab1:
+        # Page title
 
+        # Inject button + JS in one iframe
+        html(f"""
+             <style>
+             button
+             {{
+                 
+                border: none;
+                background-color: white;
+                color: blue;
+                text-decoration: underline;
+                cursor: pointer;
+                font: inherit;
+                padding: 0;
+             }}
+             </style>
+             <div style="font-family: system-ui, sans-serif; line-height: 1.6; font-size: 1rem;">
+                <p>
+                    Track the quantum operations (QuOps) used in state-of-the-art quantum computations over time.
+                </p>
+
+                <p>
+                    On the visualization page <button class="goto" style="margin-left: 6px;">Visualization</button>:<br>
+                    1. <strong>Hover</strong> over a point to see its data.<br>
+                    2. <strong>Single-click</strong> a point to update its data.<br>
+                    3. <strong>Double-click</strong> a point to open its reference.
+                </p>
+
+                <p>
+                    You can also submit new datapoints 
+                    <button class="gotos" style="margin-left: 6px;">Submit new datapoint</button>.
+                </p>
+
+                <p>
+                    All new submissions and updates are reviewed by site administrators.
+                </p>
+            </div>
+                
+                <script>
+                const be = document.querySelector(".goto");
+                be.addEventListener("click", () => {{
+                    {switch(1)}
+                }});
+                const bes = document.querySelector(".gotos");
+                bes.addEventListener("click",()=>{{
+                      {switch(2)} 
+                    
+                }});
+                </script>
+            """, height=500)
 
     # === Tab 1: Visualization ===
-    with tab1:
+    with tab2:
         
         #st.header("Visual Analysis")
         df = load_transform_data('db')
@@ -944,14 +996,18 @@ def show_login_form():
 
             # B-axis selection
             b_options = [
+                'Date (more recent = larger)',
                 'Number of qubits',
                 'Number of two-qubit gates',
                 'Number of single-qubit gates',
                 'Total number of gates',
                 'Circuit depth',
-                'Date'
+                
             ]
-            b_axis = st.selectbox("Select column for the size of pointers", b_options)
+            
+            b_axis = st.selectbox("Marker size", b_options)
+            if b_axis == 'Date (more recent = larger)':
+                b_axis = 'Date'
 
             if b_axis == 'Date':
                 date_min = df['Date'].min()
@@ -998,7 +1054,7 @@ def show_login_form():
                 # )
             ]
 
-
+        
         filtered_df = filtered_df.dropna(subset=[b_axis])
 
         
@@ -1101,7 +1157,7 @@ def show_login_form():
                         "name": comp,
                         "type": "scatter",
                         "datasetIndex": idx + 1,  # important: dataset index matches filter
-                        "encode": {"x": x_index, "y": y_index, "tooltip": [0,1, 2, 5,6,7,8,9,10,11,15]}
+                        "encode": {"x": x_index, "y": y_index, "tooltip": [1, 2,4, 5,6,7,8,9,10,11,14]}
                     }
                     for idx, comp in enumerate(computers)
                 ]
@@ -1132,21 +1188,23 @@ def show_login_form():
                 st.markdown(
                     """
                     <style>
-                    div.stButton > button:first-child {
-                        background-color: #4CAF50;
-                        color:white;
+                     div.stButton > button:first-child {
+                        background-color: #FF4B4B;
+                        color: white;
+                        border-radius: 5px;
+                      
                     }
                     div.stButton > button:first-child:hover {
                         background-color: #45a049;
-                        color:white;
+                        color: white;
                     }
                     </style>
                     """,
                     unsafe_allow_html=True,
                 )
-            
+                update_ref = graph_df.loc[graph_df["id"]==st.session_state.clicked_id,"Reference"].values[0]
 
-                if last_row.button(f"Point id {st.session_state.clicked_id} selected Click here to update datapoint"):
+                if last_row.button(f"Update data for reference {update_ref}"):
                     ts = int(time.time() * 1000)
                     html(f"<script>{switch(3)} // trigger for id {clicked_id} at {ts}</script>", height=0)
             elif clicked_id is not None and isinstance(clicked_id,str):
@@ -1191,30 +1249,30 @@ def show_login_form():
             
          
     # === Tab 2: Dataset Overview ===
-    with tab2:
+    # with tab3:
        
-        st.header("Computer Overview")
-        if os.getenv("DATA_SOURCE")=='sheet':     
-            sheet_id = os.getenv('SHEET_ID')
-            url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=xlsx"
-            df_comp = pd.read_excel(url,sheet_name= 1,header=1)
-            df_comp.drop('Unnamed: 0',axis=1,inplace=True)
-        else:  
-            df_comp = load_comp_data_from_db()
+    #     st.header("Computer Overview")
+    #     if os.getenv("DATA_SOURCE")=='sheet':     
+    #         sheet_id = os.getenv('SHEET_ID')
+    #         url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=xlsx"
+    #         df_comp = pd.read_excel(url,sheet_name= 1,header=1)
+    #         df_comp.drop('Unnamed: 0',axis=1,inplace=True)
+    #     else:  
+    #         df_comp = load_comp_data_from_db()
 
         
-        df_comp.fillna('',inplace=True)
+    #     df_comp.fillna('',inplace=True)
 
-        st.subheader("Quick Info")
-        st.markdown(f"- **Rows:** {df_comp.shape[0]}")
-        st.markdown(f"- **Columns:** {df_comp.shape[1]}")
-        st.markdown(f"- **Columns:** {', '.join(df_comp.columns)}")
+    #     st.subheader("Quick Info")
+    #     st.markdown(f"- **Rows:** {df_comp.shape[0]}")
+    #     st.markdown(f"- **Columns:** {df_comp.shape[1]}")
+    #     st.markdown(f"- **Columns:** {', '.join(df_comp.columns)}")
 
-        st.subheader("Preview of Dataset")
-        st.dataframe(df_comp)
+    #     st.subheader("Preview of Dataset")
+    #     st.dataframe(df_comp)
 
-        # Download button
-        st.download_button("Download CSV", df_comp.to_csv(index=False), "dataset.csv", "text/csv")
+    #     # Download button
+    #     st.download_button("Download CSV", df_comp.to_csv(index=False), "dataset.csv", "text/csv")
 
     
     with tab3:
@@ -1274,9 +1332,9 @@ def show_login_form():
             </style>
         """, unsafe_allow_html=True)
             with st.form("quantum_form") :
-                st.markdown("All field highlighted in green with asterick are required fields")
+                st.markdown("Highlighted = required field")
 
-                st.markdown('<div class="green-label">Reference<span style="font-size:20px; color:red;">*</span></div>', unsafe_allow_html=True)
+                st.markdown('<div class="green-label">Reference</div>', unsafe_allow_html=True)
                 reference = st.text_input(label='', key="reference_input", help = "The reference for the quantum computation, typically an arXiv or journal link")
 
                 st.markdown('<div class="black-label">Experiment Date</div>', unsafe_allow_html=True)
@@ -1288,8 +1346,9 @@ def show_login_form():
                 # st.markdown('<div class="black-label">Error Mitigation (comma-separated list)</div>', unsafe_allow_html=True)
                 # error_mitigation_raw = st.text_area("", help="e.g. ZNE, Clifford Data Regression")
 
-                st.markdown('<div class="green-label">Number of Qubits<span style="font-size:20px; color:red;">*</span></div>', unsafe_allow_html=True)
-                num_qubits = st.number_input("", min_value=0, step=1, help = "Number of qubits used in the quantum computation")
+                st.markdown('<div class="green-label">Number of Qubits</div>', unsafe_allow_html=True)
+                num_qubits_raw = st.text_input("", help = "Number of qubits used in the quantum computation")
+                num_qubits = int(num_qubits_raw) if num_qubits_raw.strip().isdigit() else None
 
                 st.markdown('<div class="black-label">Number of Two-Qubit Operations</div>', unsafe_allow_html=True)
                 num_2q_gates_raw = st.text_input("", help = "Number of two-qubit operations used in the quantum computation")
@@ -1310,10 +1369,10 @@ def show_login_form():
                 st.markdown('<div class="black-label">Circuit Depth Measure</div>', unsafe_allow_html=True)
                 circuit_depth_measure = st.text_input("", help="The measure/metric used for circuit depth, for example two-qubit gate layers, Trotter step, etc. Number of two-qubit operations and/or total number of operations is preferred to this metric, and this should be used only when these are unknown. ")
 
-                st.markdown('<div class="green-label">Institution<span style="font-size:20px; color:red;">*</span></div>', unsafe_allow_html=True)
+                st.markdown('<div class="green-label">Institution</div>', unsafe_allow_html=True)
                 institution = st.text_input("", help="Who owns the quantum computer, e.g. Google, Quantinuum, QuEra")
                 
-                st.markdown('<div class="green-label">Computer<span style="font-size:20px; color:red;">*</span></div>', unsafe_allow_html=True)
+                st.markdown('<div class="green-label">Computer</div>', unsafe_allow_html=True)
                 computer = st.text_input("", help="The name or other identifying label for the quantum computer")
 
                 submit = st.form_submit_button("Submit")
@@ -1357,10 +1416,10 @@ def show_login_form():
 
         
         if st.session_state.clicked_id is None:
-            st.subheader("Kindly select a datapoint from the **Visualization** tab to request an update.")
+            st.subheader("Please provide the necessary details…")
             update_id = df.iloc[0]["id"]
         else:
-            st.subheader("Please provide the necessary details fot the update form below")
+            st.subheader("Please provide the necessary details…")
             update_id = st.session_state.clicked_id
             st.session_state.visited = 1
         
@@ -1406,7 +1465,7 @@ def show_login_form():
             new_computation = st.text_input("Computation", value=record['Computations'], help="e.g. QFT, Measurement")
             new_computer = st.text_input("Computer", value=record['Computer'], help="The name or other identifying label for the quantum computer")
             #new_mitigation = st.text_input("Error Mitigations", value=record['Error mitigations'], help="e.g. ZNE, Clifford Data Regression")
-            new_feedback = st.text_input("Comments", value=record['feedback'], help="Please mention what changes you made")
+            new_feedback = st.text_input("Justification for changes", value=record['feedback'], help="Clear description of the changes made with justification. For example: “Changed the number of two-qubit operations from 512 to 1024. The correct number (1024 two-qubit operations) is stated in the caption of Figure 1 of the reference.")
 
             computation_list = [x.strip() for x in new_computation.split(",") if x.strip()]
             #error_mitigation_list = [x.strip() for x in new_mitigation.split(",") if x.strip()]
@@ -1423,7 +1482,7 @@ def show_login_form():
 
             captcha_input1 = col4.text_area('Enter the captcha text', height=30)
 
-            if st.button("Verify I am not a robot and Submit"):
+            if st.button("Verify humanity and submit"):
                 if st.session_state.update_captcha.lower() == captcha_input1.strip().lower():
                     if not new_ref:
                         st.error("Please fill out Reference(url or citation) as it is a required field. ")
@@ -1435,6 +1494,8 @@ def show_login_form():
                         st.error("Please fill out Institution as it is a required field. ")
                     if not new_computer:
                         st.error("Please fill out Computer as it is a required field. ")
+                    if not new_feedback:
+                        st.error("Please fill out Justification for changes as it is a required field. ")
                     
                     #if reference and num_qubits and (num_2q_gates or total_gates):
                     else:
