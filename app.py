@@ -220,9 +220,6 @@ def admin_interface():
             df_all['Computations'] = df_all['computation'].apply(
                 lambda x: ', '.join(x) if isinstance(x, list) else ''
                 )
-            df_all['Error mitigations'] = df_all['error_mitigation'].apply(
-            lambda x: ', '.join(x) if isinstance(x, list) else ''
-            )
 
             df_all = df_all.rename(columns={
                 'reference': 'Reference',
@@ -284,19 +281,24 @@ def admin_interface():
                 computation_list = [x.strip() for x in new_computation.split(",") if x.strip()]
                 #error_mitigation_list = [x.strip() for x in new_mitigation.split(",") if x.strip()]
 
-
+                error_count_a = 0
                 if st.button("Save Changes"):
                     if not ref:
+                        error_count_a+=1
                         st.error("Please fill out Reference(url or citation) as it is a required field. ")
                     if not new_qubits:
+                        error_count_a+=1
                         st.error("Please fill out Number of Qubits as it is a required field. ")
                     if not (new_num_2q_gates or new_total_gates):
+                        error_count_a+=1
                         st.error("Please fill either Number of two-Qubit operations or Total Number of Operations")
                     if not new_institution:
+                        error_count_a+=1
                         st.error("Please fill out Institution as it is a required field. ")
                     if not new_computer:
+                        error_count_a+=1
                         st.error("Please fill out Computer as it is a required field. ")
-                    else:
+                    if error_count_a == 0:
                         conn = get_connection()
                         cursor = conn.cursor()
                         status = "APPROVED"
@@ -1381,20 +1383,26 @@ def show_login_form():
                     st.success("Quantum datapoint submitted successfully!")
                     del st.session_state["submission_success"]
                 
+                error_count_new = 0
                 if submit:
                     if not reference:
+                        error_count_new+=1
                         st.error("Please fill out Reference(url or citation) as it is a required field. ")
                     if not num_qubits:
+                        error_count_new+=1
                         st.error("Please fill out Number of Qubits as it is a required field. ")
                     if not institution:
+                        error_count_new+=1
                         st.error("Please fill out Institution as it is a required field. ")
                     if not computer:
+                        error_count_new+=1
                         st.error("Please fill out Computer as it is a required field. ")
                     if not (num_2q_gates or total_gates):
+                        error_count_new+=1
                         st.error("Please fill either Number of two-Qubit operations or Total Number of Operations")
                     
                     #if reference and num_qubits and (num_2q_gates or total_gates):
-                    else:
+                    if error_count_new==0:
                         computation_list = [x.strip() for x in computation_raw.split(",") if x.strip()]
                         #error_mitigation_list = [x.strip() for x in error_mitigation_raw.split(",") if x.strip()]
                         success = insert_quantum_datapoint(
@@ -1482,23 +1490,31 @@ def show_login_form():
 
             captcha_input1 = col4.text_area('Enter the captcha text', height=30)
 
+            error_count = 0
+
             if st.button("Verify humanity and submit"):
                 if st.session_state.update_captcha.lower() == captcha_input1.strip().lower():
                     if not new_ref:
+                        error_count +=1
                         st.error("Please fill out Reference(url or citation) as it is a required field. ")
                     if not new_qubits:
+                        error_count +=1
                         st.error("Please fill out Number of Qubits as it is a required field. ")
                     if not (new_num_2q_gates or new_total_gates):
+                        error_count +=1
                         st.error("Please fill either Number of two-Qubit operations or Total Number of Operations")
                     if not new_institution:
+                        error_count +=1
                         st.error("Please fill out Institution as it is a required field. ")
                     if not new_computer:
+                        error_count +=1
                         st.error("Please fill out Computer as it is a required field. ")
                     if not new_feedback:
+                        error_count +=1
                         st.error("Please fill out Justification for changes as it is a required field. ")
                     
                     #if reference and num_qubits and (num_2q_gates or total_gates):
-                    else:
+                    if error_count==0:
                         conn = get_connection()
                         cursor = conn.cursor()
                         status = "UPDATE REQUESTED"
